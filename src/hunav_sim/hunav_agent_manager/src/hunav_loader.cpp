@@ -116,7 +116,7 @@ HunavLoader::HunavLoader() : Node("hunav_loader")
         facOther = 0.0;
         this->set_parameter(rclcpp::Parameter(name + ".behavior.other_force_factor", facOther));
       }
-      else if (facSocial > 25.0)
+      else if (facOther > 25.0) // Was previously facSocial
       {
         facOther = 25.0;
         this->set_parameter(rclcpp::Parameter(name + ".behavior.other_force_factor", facOther));
