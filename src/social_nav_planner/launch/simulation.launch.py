@@ -72,7 +72,7 @@ def generate_launch_description():
         #arguments=['--ros-args', '--params-file', conf_file]
     )
 
-    # Base world file name
+    # Base world file name 
     world_file = PathJoinSubstitution([
         FindPackageShare('hunav_gazebo_wrapper'),
         'worlds',
@@ -80,8 +80,8 @@ def generate_launch_description():
     ])
 
     # the node looks for the base_world file in the directory 'worlds'
-    # of the package hunav_gazebo_plugin direclty. So we do not need to 
-    # indicate the path
+    # of the package hunav_gazebo_plugin direclty. It then adds the agents and robots
+    # to that world and saves it as 'generatedWorld.world' in the install/share/worlds directory
 
     # HuNav -> generate the world with the agents
     hunav_gazebo_worldgen_node = Node(
@@ -126,7 +126,7 @@ def generate_launch_description():
     world_path = PathJoinSubstitution([
         FindPackageShare('hunav_gazebo_wrapper'),
         'worlds',
-        'generatedWorld.world' #'empty_cafe.world' #'pmb2_cafe.world'
+        'generatedWorld.world' #TODO: Create a name based on the base world (from 'environment_name') to allow for multiple generated worlds
     ])
 
     gzserver_cmd = [
@@ -214,6 +214,7 @@ def generate_launch_description():
             "-R", gz_R, "-P", gz_P,
             "-Y", gz_Y,
         ],
+        condition=IfCondition(LaunchConfiguration('spawn_go2'))
     )
 
     # TODO: May not be needed
@@ -222,23 +223,27 @@ def generate_launch_description():
     #     executable="contact_sensor",
     #     output="screen",
     #     parameters=[{"use_sim_time": LaunchConfiguration("use_sim_time")}, links_config],
+    #     condition=IfCondition(LaunchConfiguration('spawn_go2'))
     # )
 
     # Controllers
     load_joint_state_controller = ExecuteProcess(
         cmd=["ros2", "control", "load_controller", "--set-state", "active", "joint_states_controller"],
         output="screen",
+        condition=IfCondition(LaunchConfiguration('spawn_go2'))
     )
 
     load_joint_trajectory_effort_controller = ExecuteProcess(
         cmd=["ros2", "control", "load_controller", "--set-state", "active", "joint_group_effort_controller"],
         output="screen",
+        condition=IfCondition(LaunchConfiguration('spawn_go2'))
     )
 
     # TODO: Optional if you want position controller instead:
     # load_joint_trajectory_position_controller = ExecuteProcess(
     #     cmd=["ros2", "control", "load_controller", "--set-state", "active", "joint_group_position_controller"],
     #     output="screen",
+    #     condition=IfCondition(LaunchConfiguration('spawn_go2'))
     # )
 
 
@@ -316,22 +321,21 @@ def generate_launch_description():
     # Declare the launch arguments
     # ----------------------------------------------------------
     declare_agents_conf_file = DeclareLaunchArgument(
-        'configuration_file', default_value='agents_warehouse.yaml',
-        description='Specify configuration file name in the cofig directory'
+        'configuration_file', default_value='agents_cafe.yaml',
+        description='Specify agent configuration file name in the hunav_gazebo_wrapper/scenarios directory'
     )
     declare_metrics_conf_file = DeclareLaunchArgument(
         'metrics_file', default_value='metrics.yaml',
-        description='Specify the name of the metrics configuration file in the cofig directory'
+        description='Specify the name of the evaluation metrics configuration file in the hunav_evaluator/config directory'
     )
     # declare_arg_world = DeclareLaunchArgument(
     #     'base_world', default_value='no_roof_small_warehouse.world',
     #     description='Specify world file name'
-    # )
+    # ) #TODO: Remove?
     declare_arg_environment = DeclareLaunchArgument(
         'environment_name', default_value='cafe',
-        description='Specify the name of the environment. This is used to load the Gazebo world file and map file.'
+        description='Specify the name of the environment. This is used to load the Gazebo world file and map file.' #TODO: Improve description (its the stem part of the base world file)
     )
-
     declare_gz_obs = DeclareLaunchArgument(
         'use_gazebo_obs', default_value='True',
         description='Whether to fill the agents obstacles with closest Gazebo obstacle or not'
