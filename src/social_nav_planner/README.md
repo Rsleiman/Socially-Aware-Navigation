@@ -1,3 +1,9 @@
+### TODOs for later
+1. Find way to increase speed of robot
+2. 
+
+
+
 ### Notes
 1. Must run 'source /usr/share/gazebo/setup.sh' before running launch files
 2. z position field in people_msgs/msg/People refers to human's heading (-pi to pi), z velocity field is rate of change of heading.
