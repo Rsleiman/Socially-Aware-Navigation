@@ -1,6 +1,6 @@
 ### TODOs for later
-1. Find way to increase speed of robot
-2. 
+1. Find way to increase speed of robot DONE
+2. Find a way to accept agent yamls with no goals
 
 
 
@@ -17,3 +17,5 @@
             subparam: value
 ...
 ```
+4. hunav_rviz_panel doesn't change the map parameter when saving an agents_\<map\>.yaml configuration. It stays as 'cafe'. # This doesn't seem to cause any errors. But to be safe make sure that the map parameter matches the map you want to load.
+5. hunav_rviz_panel does not save the orientation of the agent from the hunavgoal topic into the yaml. TODO?

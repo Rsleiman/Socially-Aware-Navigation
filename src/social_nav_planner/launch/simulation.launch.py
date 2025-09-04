@@ -133,7 +133,7 @@ def generate_launch_description():
         'gzserver ',
          world_path, 
         _boolean_command('verbose'), '',
-        _boolean_command('pause'), '',
+        # _boolean_command('pause'), '',
         '-s ', 'libgazebo_ros_init.so',
         '-s ', 'libgazebo_ros_factory.so',
         #'-s ', #'libgazebo_ros_state.so',
@@ -373,10 +373,10 @@ def generate_launch_description():
         'verbose', default_value='true',
         description='Set "true" to increase messages written to terminal.'
     )
-    declare_arg_pause = DeclareLaunchArgument(
-        'pause', default_value='true',
-        description='Set "true" to launch Gazebo paused.'
-    )
+    # declare_arg_pause = DeclareLaunchArgument(
+    #     'pause', default_value='true',
+    #     description='Set "true" to launch Gazebo paused.'
+    # )
     declare_arg_namespace = DeclareLaunchArgument(
         'robot_namespace', default_value='',
         description='The type of robot')
@@ -435,7 +435,7 @@ def generate_launch_description():
     ld.add_action(declare_use_sim_time)
     ld.add_action(declare_use_rviz)
     ld.add_action(declare_arg_verbose)
-    ld.add_action(declare_arg_pause)
+    # ld.add_action(declare_arg_pause) #TODO: Seems to cause robot issues
     ld.add_action(declare_arg_namespace)
     # ld.add_action(declare_arg_laser)
     # ld.add_action(declare_arg_rgbd)
