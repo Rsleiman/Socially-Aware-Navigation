@@ -5,6 +5,7 @@ import os
 import rclpy
 from rclpy.node import Node
 from hunav_evaluator import hunav_metrics
+from ament_index_python.packages import get_package_share_directory
 
 from hunav_msgs.msg import Agents
 from hunav_msgs.msg import Agent
@@ -166,6 +167,7 @@ class HunavEvaluatorNode(Node):
 
         # for each metric, compute the value
         for m in self.metrics_to_compute.keys():
+            self.get_logger().info(f"Computing metric {m}...") # Debug
             # call the metric function with the agents and robot lists
             metric = hunav_metrics.metrics[m](self.agents_list, self.robot_list)
             #
@@ -263,6 +265,12 @@ class HunavEvaluatorNode(Node):
             result_file += ".csv"  # ensure the file has a .csv extension
         # add extension if it does not have it
 
+        # If no directory is specified, use default location
+        if os.path.dirname(result_file) == '':
+            # Use package share directory
+            pkg_dir = get_package_share_directory('hunav_evaluator')
+            result_file = os.path.join(pkg_dir, 'results', result_file)
+        
         file_was_created = os.path.exists(result_file)
         # be sure thath the parent directory exists
         os.makedirs(os.path.dirname(result_file), exist_ok=True)

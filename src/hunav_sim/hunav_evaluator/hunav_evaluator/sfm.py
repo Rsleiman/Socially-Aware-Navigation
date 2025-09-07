@@ -12,9 +12,9 @@ class SFM:
         self.forceFactorObstacle = 10  # Factor for the obstacle force
         self.forceSigmaObstacle = 0.2  # Sigma for the obstacle force
         self.forceFactorSocial = 2.1  # Factor for the social force
-        self.forceFactorGroupGaze = 3.0  # Factor for the group gaze force
-        self.forceFactorGroupCoherence = 2.0  # Factor for the group coherence force
-        self.forceFactorGroupRepulsion = 1.0  # Factor for the group repulsion force
+        self.forceFactorGroupGaze = 0.0  # Factor for the group gaze force
+        self.forceFactorGroupCoherence = 0.0  # Factor for the group coherence force
+        self.forceFactorGroupRepulsion = 0.0  # Factor for the group repulsion force
         self.lambda_ = 2.0  # Lambda for the social force
         self.gamma = 0.35  # Gamma for the social force
         self.n = 2.0  # n for the social force

@@ -5,10 +5,11 @@ hunav_loader:
     agents:
       - person1
       - person2
+      - person3
     person1:
       id: 1
       skin: 0
-      group_id: -1
+      group_id: 1
       max_vel: 0.5
       radius: 0.4
       behavior:
@@ -18,26 +19,26 @@ hunav_loader:
         once: true
         vel: 1.0
         dist: 4.5
-        goal_force_factor: 2.0
+        goal_force_factor: 0.0
         obstacle_force_factor: 10.0
-        social_force_factor: 1.0
-        other_force_factor: 20.0
+        social_force_factor: 0.0
+        other_force_factor: 0.0
       init_pose:
-        x: -6.976060
-        y: 8.873902
+        x: -4.976060
+        y: 4.873902
         z: 1.250000
         h: 1.0
-      goal_radius: 0.3
-      cyclic_goals: false
+      goal_radius: 0.0
+      cyclic_goals: true
       goals: ["g0"]
       g0:
-        x: -6.976060
-        y: 8.873902
-        h: 1.0
+        x: -4.976060
+        y: 4.873902
+        h: 2.0
     person2:
       id: 2
       skin: 1
-      group_id: -1
+      group_id: 1
       max_vel: 0.5
       radius: 0.4
       behavior:
@@ -47,19 +48,52 @@ hunav_loader:
         once: true
         vel: 1.0
         dist: 4.5
-        goal_force_factor: 2.0
+        goal_force_factor: 1.0
         obstacle_force_factor: 10.0
         social_force_factor: 0.0
-        other_force_factor: 20.0
+        other_force_factor: 0.0
       init_pose:
-        x: -5.976060
-        y: 9.873902
+        x: -13.976060
+        y: 15.873902
         z: 1.250000
-        h: 1.0
+        h: 3.14
+      goal_radius: 0.0  
+      cyclic_goals: true
+      goals: ["g0", "g1"]
+      g0:
+        x: -13.976060
+        y: 15.873902
+        h: 3.14
+      g1:
+        x: -13.976060
+        y: 15.873902
+        h: 3.14
+    person3:
+      id: 3
+      skin: 2
+      group_id: 1
+      max_vel: 0.5
+      radius: 0.4
+      behavior:
+        type: 1
+        configuration: 1
+        duration: 40.0
+        once: true
+        vel: 1.0
+        dist: 4.5
+        goal_force_factor: 0.0
+        obstacle_force_factor: 0.0
+        social_force_factor: 0.0
+        other_force_factor: 0.0
+      init_pose:
+        x: -5.476060
+        y: 6.373902
+        z: 1.250000
+        h: -1.0
       goal_radius: 0.3
-      cyclic_goals: false
+      cyclic_goals: true
       goals: ["g0"]
       g0:
-        x: -5.976060
-        y: 9.873902
-        h: 1.0
+        x: -5.476060
+        y: 6.373902
+        h: -1.0

@@ -373,7 +373,7 @@ def group_space_intrusions(
         for id in group_ids:
             group_center = get_group_center(agents[i].agents, id, d)
             dist = (
-                euclidean_distance(robot[i].position, group_center.position)
+                euclidean_distance(robot[i].position, group_center) # remove .position attribute of group_center as euclidean_distance expects Pose objects
                 - robot[i].radius
             )
             min_dist = max(min(min_dist, dist), 0.0)  # Ensure non-negative distance

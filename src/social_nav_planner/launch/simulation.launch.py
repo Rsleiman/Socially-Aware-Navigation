@@ -389,17 +389,17 @@ def generate_launch_description():
     )
     
     # Initial robot pose 
-    declare_arg_px = DeclareLaunchArgument('gzpose_x', default_value='0.0',
+    declare_arg_px = DeclareLaunchArgument('gzpose_x', default_value='-3.0',
             description='The robot initial position in the X axis of the world')
-    declare_arg_py = DeclareLaunchArgument('gzpose_y', default_value='0.0',
+    declare_arg_py = DeclareLaunchArgument('gzpose_y', default_value='3.0',
             description='The robot initial position in the Y axis of the world')
-    declare_arg_pz = DeclareLaunchArgument('gzpose_z', default_value='0.225',
+    declare_arg_pz = DeclareLaunchArgument('gzpose_z', default_value='0.230',
             description='The robot initial position in the Z axis of the world')
     declare_arg_pR = DeclareLaunchArgument('gzpose_R', default_value='0.0',
             description='The robot initial roll angle in the world')
     declare_arg_pP = DeclareLaunchArgument('gzpose_P', default_value='0.0',
             description='The robot initial pitch angle in the world')
-    declare_arg_pY = DeclareLaunchArgument('gzpose_Y', default_value='0.0',
+    declare_arg_pY = DeclareLaunchArgument('gzpose_Y', default_value='2.0',
             description='The robot initial yaw angle in the world')
     
     # Sensors toggles (left for completeness. TODO: Go2 stack typically ignores these here)
