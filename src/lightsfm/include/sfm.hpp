@@ -43,12 +43,12 @@ struct Forces {
   utils::Vector2d robotSocialForce;
 };
 
-struct Parameters {
+struct Parameters { // Changed forceFactorGroup* to 0.0 to disable group forces and facilitate static groups
   Parameters()
       : forceFactorDesired(2.0), forceFactorObstacle(10),
         forceSigmaObstacle(0.2), forceFactorSocial(2.1),
-        forceFactorGroupGaze(3.0), forceFactorGroupCoherence(2.0),
-        forceFactorGroupRepulsion(1.0), lambda(2.0), gamma(0.35), n(2.0), epsilon(0.005),
+        forceFactorGroupGaze(0.0), forceFactorGroupCoherence(0.0),
+        forceFactorGroupRepulsion(0.0), lambda(2.0), gamma(0.35), n(2.0), epsilon(0.005),
         nPrime(3.0), relaxationTime(0.5) {}
 
   double forceFactorDesired;
