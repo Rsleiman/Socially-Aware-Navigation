@@ -29,7 +29,7 @@ def generate_launch_description():
             "':'.join([p for p in '", EnvironmentVariable("GAZEBO_MODEL_PATH", default_value=""), "'.split(':') if not p.endswith('hunav_gazebo_wrapper')])"
         ])
     )
-    
+
     # ----------------------------------------------------------
     # World generation parameters
     # ----------------------------------------------------------
@@ -40,7 +40,7 @@ def generate_launch_description():
     use_navgoal = LaunchConfiguration("use_navgoal_to_start")
     navgoal_topic = LaunchConfiguration("navgoal_topic")
     ignore_models = LaunchConfiguration("ignore_models")
-    navigation = LaunchConfiguration("navigation")
+    nav_mode = LaunchConfiguration("nav_mode")
     use_sim_time = LaunchConfiguration("use_sim_time")
     use_rviz = LaunchConfiguration("use_rviz")
     environment_name = LaunchConfiguration("environment_name")
@@ -90,7 +90,7 @@ def generate_launch_description():
         "maps",
         PythonExpression(["'", environment_name, ".yaml'"])
     ])
-    
+
     # the node looks for the base_world file in the directory 'worlds'
     # of the package hunav_gazebo_plugin direclty. It then adds the agents and robots
     # to that world and saves it as 'generatedWorld.world' in the install/share/worlds directory
@@ -345,10 +345,71 @@ def generate_launch_description():
         executable = "static_transform_publisher",
         output="screen",
         arguments = ['0', '0', '0', '0', '0', '0', 'map', 'odom'],
-        condition=UnlessCondition(navigation)
+        condition=IfCondition(PythonExpression([
+            "'", nav_mode, "' in ['none', 'mapping_only']"
+        ]))
     )
 
+    # ----------------------------------------------------------
+    # SLAM, localization and navigation
+    # ----------------------------------------------------------
+    go2_nav2_launch_path = PathJoinSubstitution(
+        [config_pkg_share, "launch", "navigate.launch.py"]
+    )
+    go2_slam_launch_path = PathJoinSubstitution(
+        [config_pkg_share, "launch", "slam.launch.py"]
+    )
     
+    # SLAM + Navigation: Use go2_config's slam.launch.py (which includes champ's slam.launch.py → nav2 navigation_launch.py + slam_toolbox)
+    slam_nav_launch = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(go2_slam_launch_path),
+        launch_arguments={
+            "slam_params_file": path.join(
+                config_pkg_share, "config", "autonomy", "slam.yaml"
+            ),
+            "sim": use_sim_time,
+            "rviz": use_rviz,
+        }.items(),
+        condition=IfCondition(PythonExpression([
+            "'", nav_mode, "' == 'slam'"
+        ])),
+    )
+
+    # Navigation with existing map: Use go2_config's navigate.launch.py (which includes champ's navigate.launch.py → nav2 bringup_launch.py)
+    nav_with_map_launch = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(go2_nav2_launch_path),
+        launch_arguments={
+            "map": map_file,  # Add the required map parameter
+            "params_file": path.join(
+                config_pkg_share, "config", "autonomy", "navigation.yaml"
+            ),
+            "sim": use_sim_time,
+            "rviz": use_rviz,
+        }.items(),
+        condition=IfCondition(PythonExpression([
+            "'", nav_mode, "' == 'localization'"
+        ])),
+    )
+
+    # SLAM only (no navigation): Use slam_toolbox directly
+    slam_only_launch = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource([
+            FindPackageShare("slam_toolbox"), 
+            "/launch/online_async_launch.py"
+        ]),
+        launch_arguments={
+            "slam_params_file": path.join(
+                config_pkg_share, "config", "autonomy", "slam.yaml"
+            ),
+            "use_sim_time": use_sim_time,
+        }.items(),
+        condition=IfCondition(PythonExpression([
+            "'", nav_mode, "' == 'mapping_only'"
+        ])),
+    )
+
+
+
     # ----------------------------------------------------------
     # Declare the launch arguments
     # ----------------------------------------------------------
@@ -392,9 +453,9 @@ def generate_launch_description():
         "navgoal_topic", default_value="goal_pose",
         description="Name of the topic in which navigation goal for the robot will be published"
     )
-    declare_navigation = DeclareLaunchArgument(
-        "navigation", default_value="false",
-        description="If launch the pmb2 navigation system"
+    declare_nav_mode = DeclareLaunchArgument(
+        "nav_mode", default_value="none",
+        description="Navigation mode: 'slam' (SLAM+nav), 'localization' (localization+nav), 'mapping_only' (SLAM only), or 'none' (no navigation)"
     )
     declare_ignore_models = DeclareLaunchArgument(
         "ignore_models", default_value="aws_robomaker_warehouse_GroundB_01_001 ground_plane cafe",
@@ -462,7 +523,7 @@ def generate_launch_description():
     ld.add_action(declare_frame_to_publish)
     ld.add_action(declare_use_navgoal)
     ld.add_action(declare_navgoal_topic)
-    ld.add_action(declare_navigation)
+    ld.add_action(declare_nav_mode)
     ld.add_action(declare_ignore_models)
     ld.add_action(declare_use_sim_time)
     ld.add_action(declare_use_rviz)
@@ -494,8 +555,14 @@ def generate_launch_description():
     ld.add_action(go2_spawn_event)
     ld.add_action(controller_load_event)
 
-    # Static TF if no nav stack
+    # Static TF if no nav_mode
     ld.add_action(static_tf_node)
+
+    # Navigation and SLAM based on nav_mode
+    ld.add_action(slam_nav_launch)
+    ld.add_action(nav_with_map_launch)
+    ld.add_action(slam_only_launch)
+
     return ld
 
 # Add boolean commands if true
