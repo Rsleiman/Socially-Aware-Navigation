@@ -7,10 +7,12 @@
 - ~~Humans stay still in static groups~~
 Perhaps setting group's social forces to 0 while walking agents have positive social forces will be ideal.
 5. ~~Investigate group_id parameter to see whether agents with same group id can ignore each other's forces:~~
-6. Create a node/py file that calls the metric recording starter and stopper so that we can add custom parameters into the starter.
-7. Create wrapper/interface for plugging in a certain path planning algorithm into Nav2, and activate it once a goal is sent (Also, determine how we will send a goal. i.e, through a topic, action (like Nav2's NavigateToPose) or something else?)
-8. Create evaluation scenarios (Based on what? A dataset? Arbitrary/custom? Generator node? (creates random group centre points, then random number of agents placed around centre and conforming to Hall's personal spaces, and all facing centre point)
-9. Implement path planners
+6. ~~Get Nav2 Stack working~~
+7. Implement LIDAR (not needed for localisation due to GT amcl node but still needed for obstacle detection/costmap updating)
+8. Create a node/py file that calls the metric recording starter and stopper so that we can add custom parameters into the starter.
+9. Create wrapper/interface for plugging in a certain path planning algorithm into Nav2, and activate it once a goal is sent (Also, determine how we will send a goal. i.e, through a topic, action (like Nav2's NavigateToPose) or something else?)
+10. Create evaluation scenarios (Based on what? A dataset? Arbitrary/custom? Generator node? (creates random group centre points, then random number of agents placed around centre and conforming to Hall's personal spaces, and all facing centre point)
+11. Implement path planners
 
 ### Notes
 1. Must run 'source /usr/share/gazebo/setup.sh' before running launch files

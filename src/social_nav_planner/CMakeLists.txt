@@ -14,8 +14,6 @@ find_package(nav_msgs REQUIRED)
 find_package(tf2 REQUIRED)
 find_package(tf2_ros REQUIRED)
 
-ament_python_install_package(scripts)
-
 install(DIRECTORY
   launch 
   config 
