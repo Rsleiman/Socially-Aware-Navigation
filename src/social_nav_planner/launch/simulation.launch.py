@@ -1,4 +1,5 @@
 # Make sure to run 'source /usr/share/gazebo/setup.sh' in bash before launching this file
+#TODO: add credits to HuNav and Go2 teams
 
 from os import path
 from os import environ

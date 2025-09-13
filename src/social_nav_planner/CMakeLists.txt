@@ -16,10 +16,16 @@ find_package(tf2_ros REQUIRED)
 
 ament_python_install_package(scripts)
 
-install(DIRECTORY launch DESTINATION share/${PROJECT_NAME})
+install(DIRECTORY
+  launch 
+  config 
+  DESTINATION share/${PROJECT_NAME}
+)
 
 install(PROGRAMS
   scripts/path_planner.py
+  scripts/groundtruth_amcl.py
+  scripts/metrics_recorder.py
   DESTINATION lib/${PROJECT_NAME}
 )
 

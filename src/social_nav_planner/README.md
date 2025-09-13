@@ -1,32 +1,66 @@
-### TODOs for later
-1. ~~Find way to increase speed of robot~~
-2. ~~Find a way to accept agent yamls with no goals~~
-3. Look for threshold value that stops humans reacting to forces.
-4. ~~Experiment with social forces configurations in yaml such that:~~
-- ~~Humans dont react weirdly to each other~~
-- ~~Humans stay still in static groups~~
-Perhaps setting group's social forces to 0 while walking agents have positive social forces will be ideal.
-5. ~~Investigate group_id parameter to see whether agents with same group id can ignore each other's forces:~~
-6. Create a node/py file that calls the metric recording starter and stopper so that we can add custom parameters into the starter.
-7. Create evaluation scenarios
+# Social Navigation Planner
 
+This package provides a social navigation system for the Go2 robot with ground truth localization, integrated with Hunavsim.
 
+## Summary
+The system integrates:
+- Gazebo simulation with HuNav human agents
+- Go2 quadruped robot
+- Nav2 navigation stack with ground truth localization
+- Custom path planner capability (to be implemented)
+- Hunav Evaluator to measure navigation wrt. social metrics
 
-### Notes
-1. Must run 'source /usr/share/gazebo/setup.sh' before running launch files
-2. z position field in people_msgs/msg/People refers to human's heading (-pi to pi), z velocity field is rate of change of heading.
-3. If yaml files contain a ros__parameters field, everything in that field can be passed as parameters into a ros node and be directly callable from that ros node (see hunav_loader node in simulation.launch.py). yaml format:
+## Components
+
+### 1. Groundtruth AMCL Node (`groundtruth_amcl.py`)
+- Subscribes to `/odom/ground_truth` from Gazebo
+- Publishes pose on `/amcl_pose` for Nav2
+- Broadcasts `map->base_link` transform
+- Bypasses Nav2 Stack's requirement for localisation.
+
+### 2. Custom Navigation Configuration (`navigation_groundtruth.yaml`)
+- Nav2 parameters optimized for ground truth localization
+- AMCL sections commented out
+- Costmap configurations for laser data 
+
+### 3. Launch Files
+- `simulation.launch.py`: Original simulation with Gazebo + HuNav + Go2 (No Nav stack)
+- `nav2_no_amcl.launch.py`: Nav2 stack bringup without AMCL (replaced by our GT AMCL node)
+- `nav2_simulation.launch.py`: Complete system with Nav Stack
+
+## Usage
+
+### 1. Launch the complete system:
+```bash
+cd /path/to/go2_social_nav_ws
+source /opt/ros/humble/setup.bash
+source /usr/share/gazebo/setup.sh # To load gazebo default models and env variables
+source install/setup.bash
+ros2 launch social_nav_planner nav2_simulation.launch.py # TODO: Params (path planner, config file, etc.)
 ```
-<node name>:
-    ros__parameters:
-        param1: value
-        param2:
-            subparam: value
-            subparam: value
-...
+
+### 2. Available launch arguments:
+- `use_rviz`: Launch RViz
+- `map`: Map file to use
+- `environment_name`: Gazebo world
+- `configuration_file`: HuNav agent configuration yaml
+- ...
+
+If Missing dependencies: Run `rosdep install --from-paths . -r -y`
+
+### Useful debug comnands:
+```bash
+# node status
+ros2 node list | grep -E "(amcl|nav2|controller)"
+# check transforms
+ros2 run tf2_ros tf2_echo map base_link
+# Check nav status  
+ros2 service call /bt_navigator/get_state lifecycle_msgs/srv/GetState
+# look at costmaps
+ros2 run nav2_costmap_2d nav2_costmap_2d_markers voxel_grid:=/local_costmap/voxel_grid
 ```
-4. hunav_rviz_panel doesn't change the map parameter when saving an agents_\<map\>.yaml configuration. It stays as 'cafe'. # This doesn't seem to cause any errors. But to be safe make sure that the map parameter matches the map you want to load.
-5. hunav_rviz_panel does not seem to save the orientation of the agent from the hunavgoal topic into the yaml. TODO?
-6. Only way currently to keep agents static is to set one goal = to spawn point and set cyclic_goals to true
-7. With the above configuration (note 6), agents are stuck at the goal coord and cannot react to other social forces. TODO: Maybe just ignore reaction requirement and treat agents as completely static?
-8. ~~The "group_*_intrusions" metrics in metrics.yaml leads to errors in HunavEvaluatorNode:~~ FIXED
+
+## TODO: 
+1. Add laserscan data and costmap updating
+2. Implement custom path planner plugins
+3. Tune costmap params
