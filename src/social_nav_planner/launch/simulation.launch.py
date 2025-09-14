@@ -186,7 +186,8 @@ def generate_launch_description():
     joints_config = path.join(config_pkg_share, "config/joints/joints.yaml")
     gait_config = path.join(config_pkg_share, "config/gait/gait.yaml")
     links_config = path.join(config_pkg_share, "config/links/links.yaml")
-    default_model_path = path.join(descr_pkg_share, "xacro/robot.xacro")
+    # Use robot with 2D laser sensor for navigation
+    default_model_path = path.join(descr_pkg_share, "xacro/robot_VLP.xacro")
 
     go2_bringup = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
@@ -284,7 +285,10 @@ def generate_launch_description():
                     period=1.0,
                     actions=[
                         go2_bringup,
-                        spawn_go2_node,
+                        TimerAction(
+                            period=10.0,
+                            actions=[spawn_go2_node],
+                        )
                     ],
                 )
             ]
@@ -421,17 +425,17 @@ def generate_launch_description():
     )
     
     # Initial robot pose 
-    declare_arg_px = DeclareLaunchArgument("gzpose_x", default_value="1.0",
+    declare_arg_px = DeclareLaunchArgument("gzpose_x", default_value="0.0",
             description="The robot initial position in the X axis of the world")
-    declare_arg_py = DeclareLaunchArgument("gzpose_y", default_value="1.0",
+    declare_arg_py = DeclareLaunchArgument("gzpose_y", default_value="0.0",
             description="The robot initial position in the Y axis of the world")
-    declare_arg_pz = DeclareLaunchArgument("gzpose_z", default_value="0.230",
+    declare_arg_pz = DeclareLaunchArgument("gzpose_z", default_value="0.55",
             description="The robot initial position in the Z axis of the world")
     declare_arg_pR = DeclareLaunchArgument("gzpose_R", default_value="0.0",
             description="The robot initial roll angle in the world")
     declare_arg_pP = DeclareLaunchArgument("gzpose_P", default_value="0.0",
             description="The robot initial pitch angle in the world")
-    declare_arg_pY = DeclareLaunchArgument("gzpose_Y", default_value="2.0",
+    declare_arg_pY = DeclareLaunchArgument("gzpose_Y", default_value="1.0",
             description="The robot initial yaw angle in the world")
     
     # Sensors toggles (left for completeness. TODO: Go2 stack typically ignores these here)
