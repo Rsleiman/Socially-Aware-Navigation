@@ -56,7 +56,8 @@ class GroundTruthAMCL(Node):
         ]
         
         self.amcl_pub.publish(amcl_pose)
-    
+        # self.get_logger().info(f"Published AMCL pose")
+
         transform = TransformStamped()
         transform.header.stamp = msg.header.stamp
         transform.header.frame_id = "map"
@@ -69,6 +70,7 @@ class GroundTruthAMCL(Node):
         transform.transform.rotation.z = 0.0
         transform.transform.rotation.w = 1.0
         self.tf_broadcaster.sendTransform(transform)
+        # self.get_logger().info(f"Published map->odom transform")
 
         # Log occasionally for debugging
         if hasattr(self, "_log_counter"):

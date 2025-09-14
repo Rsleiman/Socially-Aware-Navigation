@@ -286,7 +286,7 @@ def generate_launch_description():
                     actions=[
                         go2_bringup,
                         TimerAction(
-                            period=10.0,
+                            period=20.0,
                             actions=[spawn_go2_node],
                         )
                     ],
@@ -429,7 +429,7 @@ def generate_launch_description():
             description="The robot initial position in the X axis of the world")
     declare_arg_py = DeclareLaunchArgument("gzpose_y", default_value="0.0",
             description="The robot initial position in the Y axis of the world")
-    declare_arg_pz = DeclareLaunchArgument("gzpose_z", default_value="0.55",
+    declare_arg_pz = DeclareLaunchArgument("gzpose_z", default_value="1.0",
             description="The robot initial position in the Z axis of the world")
     declare_arg_pR = DeclareLaunchArgument("gzpose_R", default_value="0.0",
             description="The robot initial roll angle in the world")

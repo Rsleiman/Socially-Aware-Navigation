@@ -352,11 +352,17 @@ void HuNavPlugin::Reset()
 
 bool HuNavPluginPrivate::InitializeRobot()
 {
-  RCLCPP_INFO(rosnode->get_logger(), "Initializing robot...");
+  static int robot_not_found_counter = 0;
+  if (robot_not_found_counter % 300 == 0) {
+    RCLCPP_INFO(rosnode->get_logger(), "Initializing robot...");
+  }
   robotModel = world->ModelByName(robotName);
   if (!robotModel)
   {
-    RCLCPP_ERROR(rosnode->get_logger(), "Robot model %s not found (yet)!!!!", robotName.c_str());
+    robot_not_found_counter++;
+    if (robot_not_found_counter % 300 == 0) {
+      RCLCPP_ERROR(rosnode->get_logger(), "Robot model %s not found (yet)!!!!", robotName.c_str());
+    }
     return false;
   }
   else
@@ -773,11 +779,15 @@ void HuNavPluginPrivate::HandleObstacles()
  */
 bool HuNavPluginPrivate::GetRobot()
 {
+  static int getrobot_not_found_counter = 0;
   if (!robotModel)
   {
     if (!InitializeRobot())
     {
-      RCLCPP_ERROR(rosnode->get_logger(), "Robot model %s not found!!!!", robotName.c_str());
+      getrobot_not_found_counter++;
+      if (getrobot_not_found_counter % 300 == 0) {
+        RCLCPP_ERROR(rosnode->get_logger(), "Robot model %s not found!!!!", robotName.c_str());
+      }
       return false;
     }
     return true;

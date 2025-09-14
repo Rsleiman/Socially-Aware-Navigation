@@ -108,12 +108,12 @@ def generate_launch_description():
     )
 
     nav2_bringup = TimerAction(
-        period=15.0,  # TODO: Tune delay
+        period=20.0,  # TODO: Tune delay
         actions=[nav2_bringup_no_amcl_launch]
     )
 
     groundtruth_amcl = TimerAction(
-        period=17.0,  # TODO: Tune delay
+        period=22.0,  # TODO: Tune delay
         actions=[groundtruth_amcl_node]
     )
 
