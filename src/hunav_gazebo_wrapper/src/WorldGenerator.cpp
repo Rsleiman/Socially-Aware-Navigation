@@ -387,6 +387,25 @@ bool WorldGenerator::processXML()
   // Insert plugin in the XML
   doc.FirstChildElement("sdf")->FirstChildElement("world")->InsertFirstChild(pNewPlugin);
 
+  // Add gazebo_ros_state plugin for entity state services
+  tinyxml2::XMLElement* pStatePlugin = doc.NewElement("plugin");
+  pStatePlugin->SetAttribute("name", "gazebo_ros_state");
+  pStatePlugin->SetAttribute("filename", "libgazebo_ros_state.so");
+
+  tinyxml2::XMLElement* rosElem = doc.NewElement("ros");
+  tinyxml2::XMLElement* namespaceElem = doc.NewElement("namespace");
+  namespaceElem->SetText("/gazebo");
+  rosElem->InsertEndChild(namespaceElem);
+  pStatePlugin->InsertEndChild(rosElem);
+
+  tinyxml2::XMLElement* updateRateElem = doc.NewElement("update_rate");
+  updateRateElem->SetText("1.0");
+  pStatePlugin->InsertEndChild(updateRateElem);
+
+  // Insert the plugin in the XML
+  doc.FirstChildElement("sdf")->FirstChildElement("world")->InsertAfterChild(pNewPlugin, pStatePlugin);
+
+
   tinyxml2::XMLElement* plugin = doc.FirstChildElement("sdf")->FirstChildElement("world")->FirstChildElement("plugin");
   plugin->InsertFirstChild(pUpdate);
   plugin->InsertAfterChild(pUpdate, pRobot);

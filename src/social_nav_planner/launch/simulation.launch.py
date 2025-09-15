@@ -9,10 +9,10 @@ sys.path.append("/opt/ros/humble/lib/gazebo_ros")
 from gazebo_ros_paths import GazeboRosPaths # type: ignore
 from ament_index_python.packages import get_package_share_directory
 
-from launch import LaunchDescription
+from launch import LaunchDescription, LaunchContext
 from launch.actions import (IncludeLaunchDescription, SetEnvironmentVariable, 
                             DeclareLaunchArgument, ExecuteProcess, Shutdown, 
-                            RegisterEventHandler, TimerAction, LogInfo)
+                            RegisterEventHandler, TimerAction, LogInfo, OpaqueFunction)
 from launch.conditions import IfCondition, UnlessCondition
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import (PathJoinSubstitution, TextSubstitution,
@@ -21,6 +21,7 @@ from launch_ros.actions import Node
 from launch_ros.substitutions import FindPackageShare
 from launch.event_handlers import (OnExecutionComplete, OnProcessExit,
                                 OnProcessIO, OnProcessStart, OnShutdown)
+from numpy import sin, cos
 
 def generate_launch_description():
 
@@ -175,6 +176,19 @@ def generate_launch_description():
         on_exit=Shutdown(),  
     )
 
+    gz_launch_event = RegisterEventHandler(
+        OnProcessStart(
+            target_action=hunav_gazebo_worldgen_node,
+            on_start=[
+                LogInfo(msg="GenerateWorld started, launching Gazebo after 2 seconds..."),
+                TimerAction(
+                    period=2.0,
+                    actions=[gzserver_process, gzclient_process],
+                )
+            ]
+        )
+    )
+
     
 
     # ----------------------------------------------------------
@@ -189,6 +203,32 @@ def generate_launch_description():
     # Use robot with 2D laser sensor for navigation
     default_model_path = path.join(descr_pkg_share, "xacro/robot_VLP.xacro")
 
+     # Controllers
+    spawner_joint_states = Node(
+        package="controller_manager",
+        executable="spawner",
+        arguments=["joint_states_controller"],
+        condition=IfCondition(spawn_go2)
+    )
+
+    spawner_joint_group_effort = Node(
+        package="controller_manager",
+        executable="spawner",
+        arguments=["joint_group_effort_controller"],
+        condition=IfCondition(spawn_go2)
+    )
+
+    # TODO: May not be needed
+    # contact_sensor = Node(
+    #     package="champ_gazebo",
+    #     executable="contact_sensor",
+    #     output="screen",
+    #     parameters=[{"use_sim_time": LaunchConfiguration("use_sim_time")}, links_config],
+    #     condition=IfCondition(LaunchConfiguration("spawn_go2"))
+    # )
+
+
+    #  Go2 bringup and spawn
     go2_bringup = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
             path.join(
@@ -232,91 +272,78 @@ def generate_launch_description():
         condition=IfCondition(spawn_go2)
     )
 
-    # TODO: May not be needed
-    # contact_sensor = Node(
-    #     package="champ_gazebo",
-    #     executable="contact_sensor",
-    #     output="screen",
-    #     parameters=[{"use_sim_time": LaunchConfiguration("use_sim_time")}, links_config],
-    #     condition=IfCondition(LaunchConfiguration("spawn_go2"))
-    # )
-
-    # Controllers
-    load_joint_state_controller = ExecuteProcess(
-        cmd=["ros2", "control", "load_controller", "--set-state", "active", "joint_states_controller"],
-        output="screen",
-        condition=IfCondition(spawn_go2)
-    )
-
-    load_joint_trajectory_effort_controller = ExecuteProcess(
-        cmd=["ros2", "control", "load_controller", "--set-state", "active", "joint_group_effort_controller"],
-        output="screen",
-        condition=IfCondition(spawn_go2)
-    )
-
-    # TODO: Optional if you want position controller instead:
-    # load_joint_trajectory_position_controller = ExecuteProcess(
-    #     cmd=["ros2", "control", "load_controller", "--set-state", "active", "joint_group_position_controller"],
-    #     output="screen",
-    #     condition=IfCondition(spawn_go2)
-    # )
-
-
-
-    gz_launch_event = RegisterEventHandler(
-        OnProcessStart(
-            target_action=hunav_gazebo_worldgen_node,
-            on_start=[
-                LogInfo(msg="GenerateWorld started, launching Gazebo after 2 seconds..."),
-                TimerAction(
-                    period=2.0,
-                    actions=[gzserver_process, gzclient_process],
-                )
-            ]
-        )
-    )
-
     go2_spawn_event = RegisterEventHandler(
         OnProcessStart(
             target_action=gzserver_process,
             on_start=[
-                LogInfo(msg="Gazebo server started, spawning Go2 after 2 seconds..."),
+                LogInfo(msg="Gazebo server started, spawning Go2 after 5 seconds..."),
                 TimerAction(
-                    period=1.0,
+                    period=5.0,
                     actions=[
                         go2_bringup,
                         TimerAction(
-                            period=20.0,
+                            period=2.0,
                             actions=[spawn_go2_node],
                         )
+                    ],    
+                )
+            ]
+        )
+    )
+
+    # Teleport robot to initial pose after spawn in case of unforeseen movement during launch
+    def rpy_to_quaternion(roll, pitch, yaw):
+        qx = sin(roll/2) * cos(pitch/2) * cos(yaw/2) - cos(roll/2) * sin(pitch/2) * sin(yaw/2)
+        qy = cos(roll/2) * sin(pitch/2) * cos(yaw/2) + sin(roll/2) * cos(pitch/2) * sin(yaw/2)
+        qz = cos(roll/2) * cos(pitch/2) * sin(yaw/2) - sin(roll/2) * sin(pitch/2) * cos(yaw/2)
+        qw = cos(roll/2) * cos(pitch/2) * cos(yaw/2) + sin(roll/2) * sin(pitch/2) * sin(yaw/2)
+        return [qx, qy, qz, qw]
+
+
+    def teleport_robot_func(context: LaunchContext):
+        robot_name = context.launch_configurations['robot_name']
+        x = float(context.launch_configurations['gzpose_x'])
+        y = float(context.launch_configurations['gzpose_y'])
+        z = float(context.launch_configurations['gzpose_z'])
+        roll = float(context.launch_configurations['gzpose_R'])
+        pitch = float(context.launch_configurations['gzpose_P'])
+        yaw = float(context.launch_configurations['gzpose_Y'])
+        qx, qy, qz, qw = rpy_to_quaternion(roll, pitch, yaw)
+        entity_state_string = (
+            "{state: {" + 
+                f"name: {robot_name}, " +
+                "pose: {" +
+                    "position:    {" + f"x: {x}, "  + f"y: {y}, "  + f"z: {z}}}, " +
+                    "orientation: {" + f"x: {qx}, " + f"y: {qy}, " + f"z: {qz}, "  + f"w: {qw}}}" +
+                "}" +
+            "}}"
+        )
+        return [
+            LogInfo(msg=f"Teleporting {robot_name} to ({x}, {y}, {z})..."),
+            ExecuteProcess(
+                cmd=[
+                    'ros2', 'service', 'call', '/gazebo/set_entity_state',
+                    'gazebo_msgs/srv/SetEntityState',
+                    entity_state_string
+                ],
+                output='screen',
+            )
+        ]
+
+    teleport_robot = RegisterEventHandler(
+        OnExecutionComplete(
+            target_action=spawn_go2_node,
+            on_completion=[
+                TimerAction(
+                    period=2.0,
+                    actions=[
+                        OpaqueFunction(function=teleport_robot_func)
                     ],
                 )
             ]
         )
     )
 
-    controller_load_event = RegisterEventHandler(
-        OnProcessStart(
-            target_action=spawn_go2_node,
-            on_start=[
-                LogInfo(msg="Go2 spawned, loading controllers after 2 seconds..."),
-                TimerAction(
-                    period=1.0,
-                    actions=[
-                        load_joint_state_controller,
-                        TimerAction(
-                            period=0.5,
-                            actions=[
-                                load_joint_trajectory_effort_controller
-                                # load_joint_trajectory_position_controller
-                                # contact_sensor,
-                            ],
-                        )
-                    ],
-                )
-            ]
-        )
-    )
 
     # ------------------------------------------------------------------
     # Other HuNav nodes: behavior manager and evaluator
@@ -429,7 +456,7 @@ def generate_launch_description():
             description="The robot initial position in the X axis of the world")
     declare_arg_py = DeclareLaunchArgument("gzpose_y", default_value="0.0",
             description="The robot initial position in the Y axis of the world")
-    declare_arg_pz = DeclareLaunchArgument("gzpose_z", default_value="1.0",
+    declare_arg_pz = DeclareLaunchArgument("gzpose_z", default_value="0.25",
             description="The robot initial position in the Z axis of the world")
     declare_arg_pR = DeclareLaunchArgument("gzpose_R", default_value="0.0",
             description="The robot initial roll angle in the world")
@@ -497,7 +524,11 @@ def generate_launch_description():
 
     # spawn Go2 after Gazebo
     ld.add_action(go2_spawn_event)
-    ld.add_action(controller_load_event)
+    # ld.add_action(controller_load_event)
+    ld.add_action(spawner_joint_states)
+    ld.add_action(spawner_joint_group_effort)
+    # Teleport robot to initial pose
+    ld.add_action(teleport_robot)
 
     # Static TF if no nav stack
     ld.add_action(static_tf_node)

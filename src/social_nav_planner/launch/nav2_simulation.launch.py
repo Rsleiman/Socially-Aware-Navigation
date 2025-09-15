@@ -2,7 +2,7 @@
 
 from launch import LaunchDescription
 from launch.actions import (IncludeLaunchDescription, DeclareLaunchArgument, SetEnvironmentVariable,
-                           TimerAction, RegisterEventHandler, LogInfo, OpaqueFunction)
+                           TimerAction, RegisterEventHandler, LogInfo, OpaqueFunction, ExecuteProcess)
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration, PathJoinSubstitution, PythonExpression
 from launch_ros.actions import Node
@@ -108,12 +108,12 @@ def generate_launch_description():
     )
 
     nav2_bringup = TimerAction(
-        period=20.0,  # TODO: Tune delay
+        period=10.0,  # TODO: Tune delay
         actions=[nav2_bringup_no_amcl_launch]
     )
 
     groundtruth_amcl = TimerAction(
-        period=22.0,  # TODO: Tune delay
+        period=10.0,  # TODO: Tune delay
         actions=[groundtruth_amcl_node]
     )
 
@@ -149,6 +149,38 @@ def generate_launch_description():
         ]
     )
 
+    # Clear costmaps after Nav2 
+    clear_costmaps = RegisterEventHandler(
+        OnProcessStart(
+            target_action=groundtruth_amcl_node,
+            on_start=[
+                TimerAction(
+                    period=10.0,  # Wait 10 seconds after Nav2 starts
+                    actions=[
+                        LogInfo(msg="Clearing costmaps..."),
+                        ExecuteProcess(
+                            cmd=[
+                                'ros2', 'service', 'call',
+                                '/global_costmap/clear_entirely_global_costmap',
+                                'nav2_msgs/srv/ClearEntireCostmap',
+                                '{}'
+                            ],
+                            output='screen'
+                        ),
+                        ExecuteProcess(
+                            cmd=[
+                                'ros2', 'service', 'call',
+                                '/local_costmap/clear_entirely_local_costmap',
+                                'nav2_msgs/srv/ClearEntireCostmap',
+                                '{}'
+                            ],
+                            output='screen'
+                        )
+                    ]
+                )
+            ]
+        )
+    )
     # ----------------------------------------------------------
     # Launch Description
     # ----------------------------------------------------------
@@ -164,4 +196,5 @@ def generate_launch_description():
         nav2_bringup,
         groundtruth_amcl,
         rviz_event,
+        clear_costmaps,
     ])
