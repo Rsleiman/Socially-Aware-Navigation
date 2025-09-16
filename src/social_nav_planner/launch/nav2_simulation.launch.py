@@ -50,11 +50,11 @@ def generate_launch_description():
         description="Full path to the ROS2 parameters file to use for all launched nodes")
 
     declare_environment_name = DeclareLaunchArgument(
-        "environment_name", default_value="cafe",
+        "environment_name", default_value="default", # TODO: default does not have a yaml or pgm yet. Will lead to map_server errors.
         description="Name of the environment to load")
     
     declare_agent_config_file = DeclareLaunchArgument(
-        "configuration_file", default_value="agents_cafe.yaml",
+        "configuration_file", default_value="agents_experimenting.yaml",
         description="Specify agent configuration file name in the hunav_gazebo_wrapper/scenarios directory"
         )
 

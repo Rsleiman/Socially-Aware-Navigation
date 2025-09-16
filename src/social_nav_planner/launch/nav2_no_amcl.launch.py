@@ -17,14 +17,6 @@ def generate_launch_description():
     map_yaml_file = LaunchConfiguration('map')
 
 
-    # Lifecycle node manager for nav2 (excluding AMCL)
-    lifecycle_nodes = ['map_server',
-                       'controller_server',
-                       'planner_server', 
-                       'behavior_server',
-                       'bt_navigator',
-                       'waypoint_follower']
-
     # Map server
     start_map_server_cmd = Node(
         package='nav2_map_server',
@@ -65,8 +57,6 @@ def generate_launch_description():
         parameters=[params_file],
         namespace=namespace)
     
-
-
     # BT Navigator
     start_bt_navigator_cmd = Node(
         package='nav2_bt_navigator',
@@ -88,6 +78,13 @@ def generate_launch_description():
         namespace=namespace)
 
     # Lifecycle manager
+    lifecycle_nodes = ['map_server',
+                       'controller_server',
+                       'planner_server', 
+                       'behavior_server',
+                       'bt_navigator',
+                       'waypoint_follower']
+                                                                                                                                                                                                                                                                                                                 
     start_lifecycle_manager_cmd = Node(
         package='nav2_lifecycle_manager',
         executable='lifecycle_manager',

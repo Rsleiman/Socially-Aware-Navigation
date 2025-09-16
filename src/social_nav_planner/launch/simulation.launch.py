@@ -102,14 +102,17 @@ def generate_launch_description():
         package="hunav_gazebo_wrapper",
         executable="hunav_gazebo_world_generator",
         output="screen",
-        parameters=[{"base_world": world_file},
-        {"use_gazebo_obs": gz_obs},
-        {"update_rate": rate},
-        {"robot_name": robot_name},
-        {"global_frame_to_publish": global_frame},
-        {"use_navgoal_to_start": use_navgoal},
-        {"navgoal_topic": navgoal_topic},
-        {"ignore_models": ignore_models}]
+        parameters=[
+            {"base_world": world_file},
+            {"use_gazebo_obs": gz_obs},
+            {"update_rate": rate},
+            {"robot_name": robot_name},
+            {"global_frame_to_publish": global_frame},
+            {"use_navgoal_to_start": use_navgoal},
+            {"navgoal_topic": navgoal_topic},
+            {"ignore_models": ignore_models},
+            {"use_collision": False}, # Not needed as long as hunav metrics detect collision
+        ]
         #arguments=['--ros-args', '--params-file', conf_file]
     )
 
@@ -385,7 +388,7 @@ def generate_launch_description():
     # Declare the launch arguments
     # ----------------------------------------------------------
     declare_agents_conf_file = DeclareLaunchArgument(
-        "configuration_file", default_value="agents_cafe.yaml",
+        "configuration_file", default_value="agents_experimenting.yaml", 
         description="Specify agent configuration file name in the hunav_gazebo_wrapper/scenarios directory"
     )
     declare_metrics_conf_file = DeclareLaunchArgument(
@@ -397,7 +400,7 @@ def generate_launch_description():
     #     description="Specify world file name"
     # ) #TODO: Remove?
     declare_arg_environment = DeclareLaunchArgument(
-        "environment_name", default_value="cafe",
+        "environment_name", default_value="default", # empty world
         description="Specify the name of the environment. This is used to load the Gazebo world file and map file." #TODO: Improve description (its the stem part of the base world file)
     )
     declare_gz_obs = DeclareLaunchArgument(
@@ -417,7 +420,7 @@ def generate_launch_description():
         description="Name of the global frame in which the position of the agents are provided"
     )
     declare_use_navgoal = DeclareLaunchArgument(
-        "use_navgoal_to_start", default_value="false",
+        "use_navgoal_to_start", default_value="false", # if true, agents start moving when a navgoal is received
         description="Whether to start the agents movements when a navigation goal is received or not"
     )
     declare_navgoal_topic = DeclareLaunchArgument(
@@ -513,7 +516,7 @@ def generate_launch_description():
 
     # Generate the world with the agents
     ld.add_action(hunav_loader_node)
-    ld.add_action(ordered_launch_event)
+    ld.add_action(ordered_launch_event) #TODO: rename
 
     # hunav behavior manager + evaluator
     ld.add_action(hunav_manager_node)
