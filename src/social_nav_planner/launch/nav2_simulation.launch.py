@@ -50,7 +50,7 @@ def generate_launch_description():
         description="Full path to the ROS2 parameters file to use for all launched nodes")
 
     declare_environment_name = DeclareLaunchArgument(
-        "environment_name", default_value="default", # TODO: default does not have a yaml or pgm yet. Will lead to map_server errors.
+        "environment_name", default_value="cafe", # TODO: default does not have a yaml or pgm yet. Will lead to map_server errors.
         description="Name of the environment to load")
     
     declare_agent_config_file = DeclareLaunchArgument(
@@ -106,6 +106,7 @@ def generate_launch_description():
         parameters=[params_file],
         output="screen",
     )
+
 
     nav2_bringup = TimerAction(
         period=10.0,  # TODO: Tune delay
