@@ -27,6 +27,8 @@
   <depend>nav2_waypoint_follower</depend>
   <depend>nav2_lifecycle_manager</depend>
   <depend>nav2_costmap_2d</depend>
+  <depend>people_msgs</depend>
+  <depend>std_msgs</depend>
 
   <test_depend>ament_lint_auto</test_depend>
   <test_depend>ament_lint_common</test_depend>

@@ -13,6 +13,7 @@ Perhaps setting group's social forces to 0 while walking agents have positive so
 9. Create wrapper/interface for plugging in a certain path planning algorithm into Nav2, and activate it once a goal is sent (Also, determine how we will send a goal. i.e, through a topic, action (like Nav2's NavigateToPose) or something else?)
 10. Create evaluation scenarios (Based on what? A dataset? Arbitrary/custom? Generator node? (creates random group centre points, then random number of agents placed around centre and conforming to Hall's personal spaces, and all facing centre point)
 11. Implement path planners
+12. Once movements and interactions are confirmed visually via gazebo, find a way to remove visualisation of simulation without affecting functoinality for faster training/scripting runs etc.
 
 ### Notes
 1. Must run 'source /usr/share/gazebo/setup.sh' before running launch files
@@ -47,3 +48,9 @@ Perhaps setting group's social forces to 0 while walking agents have positive so
          # custom parameters
    ```
 - Build and test
+12. costmap layer explanations:
+- StaticLayer:  Loads an occupancy grid from a map yaml (and pgm) file. Marked cells (black pixels) in the map become obstacles. Represents fixed obstacles and walls in the environment. __only in global costmap__
+- ObstacleLayer: Takes a sensor topic and marks/clears cells in this costmap dynamically. __both costmaps__
+- VoxelLayer: A voxel is the 3d equivalent of a pixel. This layer stores obstacles as 3d objects via depth sensors/3D Lidar. Then its projected onto a 2D costmap. __remove__
+- InflationLayer: Takes all marked cells (i.e locations where objects are detected) and "inflates" them outward to create a cost gradient. Allows safer navigating (DWB and TEB use it) and makes navigation more robust to incorrect sensor data. __both costmaps__
+13. For our people_msgs decoder, the bins 0 -> 240 go from right to the left of the robot (anti-clockwise).

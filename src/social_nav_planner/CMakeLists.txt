@@ -13,6 +13,8 @@ find_package(geometry_msgs REQUIRED)
 find_package(nav_msgs REQUIRED)
 find_package(tf2 REQUIRED)
 find_package(tf2_ros REQUIRED)
+find_package(people_msgs REQUIRED)
+find_package(std_msgs REQUIRED)
 
 install(DIRECTORY
   launch 
@@ -24,6 +26,7 @@ install(PROGRAMS
   scripts/path_planner.py
   scripts/groundtruth_amcl.py
   scripts/metrics_recorder.py
+  scripts/people_decoder_node.py
   DESTINATION lib/${PROJECT_NAME}
 )
 

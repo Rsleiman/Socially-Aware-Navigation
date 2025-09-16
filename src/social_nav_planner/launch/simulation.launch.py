@@ -383,7 +383,51 @@ def generate_launch_description():
         condition=UnlessCondition(navigation)
     )
 
-    
+    # ----------------------------------------------------------
+    # Extra Nodes and Events
+    # ----------------------------------------------------------
+
+    # People decoder node for policy input
+    people_decoder_node = Node(
+        package="social_nav_planner",
+        executable="people_decoder_node.py",
+        name="people_decoder_node",
+        parameters=[{
+            'num_rays': 240,
+            'fov_degrees': 180.0,
+            'max_range': 10.0,
+            'agent_radius': 0.3,
+            'update_rate': 10.0,
+            'robot_frame': 'base_link',
+            'world_frame': 'map'
+        }],
+        output="screen",
+    )
+
+    people_decoder_event = RegisterEventHandler(
+        OnProcessStart(
+            target_action=spawn_go2_node,
+            on_start=[
+                TimerAction(
+                    period=5.0,
+                    actions=[people_decoder_node]
+                )
+            ]
+        )
+    )
+
+
+
+    # ----------------------------------------------------------
+    # Declare the launch arguments
+    # ----------------------------------------------------------
+    TimerAction(
+        period=15.0,  # Start after simulation is ready
+        actions=[people_decoder_node]
+    )
+
+
+
     # ----------------------------------------------------------
     # Declare the launch arguments
     # ----------------------------------------------------------
@@ -532,6 +576,8 @@ def generate_launch_description():
     ld.add_action(spawner_joint_group_effort)
     # Teleport robot to initial pose
     ld.add_action(teleport_robot)
+    # People decoder event
+    ld.add_action(people_decoder_event)
 
     # Static TF if no nav stack
     ld.add_action(static_tf_node)
