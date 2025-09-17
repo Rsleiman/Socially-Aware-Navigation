@@ -397,25 +397,58 @@ def generate_launch_description():
             'fov_degrees': 180.0,
             'max_range': 10.0,
             'agent_radius': 0.3,
-            'update_rate': 10.0,
-            'robot_frame': 'base_link',
+            'update_rate': 5.0,  # Reduced for RL efficiency
+            'robot_frame': 'front_laser',  # Changed to match laser frame
             'world_frame': 'map'
         }],
         output="screen",
     )
 
-    people_decoder_event = RegisterEventHandler(
+    # Obstacle decoder node (converts laser scan to obstacle distances)
+    obstacle_decoder_node = Node(
+        package="social_nav_planner",
+        executable="obstacle_decoder_node.py",
+        name="obstacle_decoder_node",
+        parameters=[{
+            'num_rays': 240,
+            'fov_degrees': 180.0,
+            'max_range': 10.0,
+            'update_rate': 5.0,  # Consistent RL rate
+            "use_sim_time": True
+        }],
+        output="screen",
+    )
+
+    # Object decoder fuser (combines people and obstacle data with occlusion) #TODO: Plus goal and group_id data
+    object_decoder_fuser_node = Node(
+        package="social_nav_planner",
+        executable="object_decoder_fuser.py",
+        name="object_decoder_fuser",
+        parameters=[{
+            "num_rays": 240,
+            "update_rate": 5.0  # Consistent RL rate
+        }],
+        output="screen",
+    )
+
+    object_decoder_event = RegisterEventHandler(
         OnProcessStart(
             target_action=spawn_go2_node,
             on_start=[
                 TimerAction(
                     period=5.0,
-                    actions=[people_decoder_node]
+                    actions=[
+                        people_decoder_node,
+                        obstacle_decoder_node,
+                        TimerAction(
+                            period=3.0,  # Start fuser after decoders
+                            actions=[object_decoder_fuser_node]
+                        )
+                    ]
                 )
             ]
         )
     )
-
 
 
     # ----------------------------------------------------------
@@ -576,8 +609,8 @@ def generate_launch_description():
     ld.add_action(spawner_joint_group_effort)
     # Teleport robot to initial pose
     ld.add_action(teleport_robot)
-    # People decoder event
-    ld.add_action(people_decoder_event)
+    # Object decoder event
+    ld.add_action(object_decoder_event)
 
     # Static TF if no nav stack
     ld.add_action(static_tf_node)

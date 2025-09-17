@@ -8,7 +8,7 @@ import numpy as np
 import math
 
 from sensor_msgs.msg import LaserScan
-from std_msgs.msg import Float32MultiArray, MultiArrayDimension
+from std_msgs.msg import Float32MultiArray
 
 
 class ObstacleDecoderNode(Node):    
@@ -33,11 +33,6 @@ class ObstacleDecoderNode(Node):
         self.distances = np.full(self.num_rays, -1.0, dtype=np.float32)
         
         self.latest_scan = None
-        
-        self.distances_layout = [MultiArrayDimension()]
-        self.distances_layout[0].label = "rays" 
-        self.distances_layout[0].size = self.num_rays
-        self.distances_layout[0].stride = 1
 
         # QoS Profile for subscription - ensures we get the latest data if it falls behind
         scan_sub_qos = QoSProfile(
@@ -106,8 +101,6 @@ class ObstacleDecoderNode(Node):
 
     def publish_array(self):    
         distances_msg = Float32MultiArray()
-        distances_msg.layout.dim = self.distances_layout
-        distances_msg.layout.data_offset = 0
         distances_msg.data = self.distances.tolist()
         
         self.distances_publisher.publish(distances_msg)

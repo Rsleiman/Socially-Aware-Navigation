@@ -10,10 +10,12 @@ from typing import List, Tuple, Optional
 import json
 
 from people_msgs.msg import People #type: ignore
-from std_msgs.msg import Float32MultiArray, MultiArrayDimension, String, Int16MultiArray
+from std_msgs.msg import Float32MultiArray, String, Int16MultiArray
 from geometry_msgs.msg import Point
 import tf2_ros
 import tf2_geometry_msgs
+
+#TODO: Add functionality to handle group_id (if any)
 
 
 class PeopleDecoderNode(Node):    
@@ -59,17 +61,6 @@ class PeopleDecoderNode(Node):
         self.tf_buffer = tf2_ros.Buffer()
         self.tf_listener = tf2_ros.TransformListener(self.tf_buffer, self)
         
-        # Pre-build MultiArray layouts for performance
-        self.distances_layout = [MultiArrayDimension()]
-        self.distances_layout[0].label = "rays"
-        self.distances_layout[0].size = self.num_rays
-        self.distances_layout[0].stride = 1
-        
-        self.agent_ids_layout = [MultiArrayDimension()]
-        self.agent_ids_layout[0].label = "rays"
-        self.agent_ids_layout[0].size = self.num_rays
-        self.agent_ids_layout[0].stride = 1
-        
         # QoS Profile for subscription - ensures we get the latest data if it falls behind
         people_sub_qos = QoSProfile(
             reliability=ReliabilityPolicy.BEST_EFFORT,
@@ -99,11 +90,13 @@ class PeopleDecoderNode(Node):
             '/social_observation/distances',
             10
         )
+        #TODO: Currently, the object_decoder_fuser does not alter or process the agent_ids data. Do not use data from this topic until addressed.
         self.agent_ids_publisher = self.create_publisher(
             Int16MultiArray,
             '/social_observation/agent_ids',
             10
         )
+        # For ease of identifying agents by name
         self.agent_name_to_index_publisher = self.create_publisher(
             String,
             '/social_observation/agent_name_to_index',
@@ -253,16 +246,12 @@ class PeopleDecoderNode(Node):
     def publish_arrays(self, mapping_changed=False):
         # Publish distances
         distances_msg = Float32MultiArray()
-        distances_msg.layout.dim = self.distances_layout
-        distances_msg.layout.data_offset = 0
         distances_msg.data = self.distances.tolist()
         
         self.distances_publisher.publish(distances_msg)
 
         # Publish agent IDs
         agent_ids_msg = Int16MultiArray()
-        agent_ids_msg.layout.dim = self.agent_ids_layout
-        agent_ids_msg.layout.data_offset = 0
         agent_ids_msg.data = self.agent_ids.tolist()
 
         self.agent_ids_publisher.publish(agent_ids_msg)
