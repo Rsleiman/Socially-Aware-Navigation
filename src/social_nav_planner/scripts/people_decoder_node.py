@@ -26,8 +26,8 @@ class PeopleDecoderNode(Node):
         self.declare_parameter('fov_degrees', 180.0)  
         self.declare_parameter('max_range', 10.0)     
         self.declare_parameter('agent_radius', 0.3)   # Agent footprint radius in meters
-        self.declare_parameter('update_rate', 10.0)   # Hz #TODO: Adjust based on speed of device
-        self.declare_parameter('robot_frame', 'base_link')
+        self.declare_parameter('update_rate', 5.0)    # TODO: Tune rate depending on performance vs functionality
+        self.declare_parameter('robot_frame', 'front_laser') # Supposed to simulate laser data
         self.declare_parameter('world_frame', 'map')
         
         # Get parameters
@@ -54,9 +54,21 @@ class PeopleDecoderNode(Node):
         self.last_mapping_json = None
 
         self.latest_people = None
+        self.latest_transform = None
 
         self.tf_buffer = tf2_ros.Buffer()
         self.tf_listener = tf2_ros.TransformListener(self.tf_buffer, self)
+        
+        # Pre-build MultiArray layouts for performance
+        self.distances_layout = [MultiArrayDimension()]
+        self.distances_layout[0].label = "rays"
+        self.distances_layout[0].size = self.num_rays
+        self.distances_layout[0].stride = 1
+        
+        self.agent_ids_layout = [MultiArrayDimension()]
+        self.agent_ids_layout[0].label = "rays"
+        self.agent_ids_layout[0].size = self.num_rays
+        self.agent_ids_layout[0].stride = 1
         
         # QoS Profile for subscription - ensures we get the latest data if it falls behind
         people_sub_qos = QoSProfile(
@@ -122,10 +134,23 @@ class PeopleDecoderNode(Node):
             # No people data yet, publish empty observations
             self.publish_arrays()
             return
+        
+        # Get transform once per timer tick and cache it
+        try:
+            self.latest_transform = self.tf_buffer.lookup_transform(
+                self.robot_frame,
+                self.latest_people.header.frame_id,
+                rclpy.time.Time(),
+                timeout=rclpy.duration.Duration(seconds=0.1)
+            )
+        except Exception as e:
+            self.get_logger().debug(f'TF2 transformation failed: {e}')
+            self.publish_arrays()
+            return
             
         # Reset arrays
-        self.distances.fill(-1.0)
-        self.agent_ids = [-1] * self.num_rays
+        self.distances = np.full(self.num_rays, -1.0, dtype=np.float32)
+        self.agent_ids = np.full(self.num_rays, -1, dtype=np.int16)
         mapping_changed = False
         
         # Process each person
@@ -138,11 +163,8 @@ class PeopleDecoderNode(Node):
             # get agent index
             agent_index = self.agent_name_to_index[person.name]
 
-            # Transform person position to robot frame
-            robot_point = self.transform_point_to_robot_frame(
-                person.position, 
-                self.latest_people.header.frame_id
-            )
+            # Transform person position
+            robot_point = self.transform_point(person.position)
             if robot_point is None:
                 continue
                 
@@ -154,7 +176,7 @@ class PeopleDecoderNode(Node):
             
             # Update observation arrays
             for bin_idx in bins:
-                # If bin is empty or current agent is closer, update it
+                # Update iff empty or current agent is closer
                 if self.distances[bin_idx] < 0 or distance < self.distances[bin_idx]:
                     self.distances[bin_idx] = distance
                     self.agent_ids[bin_idx] = agent_index
@@ -164,29 +186,23 @@ class PeopleDecoderNode(Node):
 
 
 
-    def transform_point_to_robot_frame(self, point: Point, source_frame: str):
+    def transform_point(self, point: Point):
         try:
-            # Get transform from source_frame to robot_frame
-            transform = self.tf_buffer.lookup_transform(
-                self.robot_frame,
-                source_frame,
-                rclpy.time.Time(),
-                timeout=rclpy.duration.Duration(seconds=0.1)
-            )
-            
             # Create a PointStamped message
             point_stamped = tf2_geometry_msgs.PointStamped()
-            point_stamped.header.frame_id = source_frame
+            point_stamped.header.frame_id = self.latest_people.header.frame_id
             point_stamped.point = point
             
-            # Transform the point
-            transformed_point = tf2_geometry_msgs.do_transform_point(point_stamped, transform)
+            # Transform the point using cached transform
+            transformed_point = tf2_geometry_msgs.do_transform_point(point_stamped, self.latest_transform)
             
             return transformed_point.point
             
         except Exception as e:
-            self.get_logger().debug(f'TF2 transformation failed: {e}')
+            self.get_logger().debug(f'TF2 point transformation failed: {e}')
             return None
+
+    
 
     def compute_bearing_and_distance(self, point: Point) -> Tuple[float, float]:
         distance = math.sqrt(point.x**2 + point.y**2)
@@ -237,10 +253,7 @@ class PeopleDecoderNode(Node):
     def publish_arrays(self, mapping_changed=False):
         # Publish distances
         distances_msg = Float32MultiArray()
-        distances_msg.layout.dim.append(MultiArrayDimension())
-        distances_msg.layout.dim[0].label = "rays"
-        distances_msg.layout.dim[0].size = self.num_rays
-        distances_msg.layout.dim[0].stride = 1
+        distances_msg.layout.dim = self.distances_layout
         distances_msg.layout.data_offset = 0
         distances_msg.data = self.distances.tolist()
         
@@ -248,12 +261,9 @@ class PeopleDecoderNode(Node):
 
         # Publish agent IDs
         agent_ids_msg = Int16MultiArray()
-        agent_ids_msg.layout.dim.append(MultiArrayDimension())
-        agent_ids_msg.layout.dim[0].label = "rays"
-        agent_ids_msg.layout.dim[0].size = self.num_rays
-        agent_ids_msg.layout.dim[0].stride = 1
+        agent_ids_msg.layout.dim = self.agent_ids_layout
         agent_ids_msg.layout.data_offset = 0
-        agent_ids_msg.data = [int(idx) for idx in self.agent_ids]
+        agent_ids_msg.data = self.agent_ids.tolist()
 
         self.agent_ids_publisher.publish(agent_ids_msg)
 
