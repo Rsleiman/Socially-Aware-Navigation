@@ -107,7 +107,6 @@ def generate_launch_description():
         output="screen",
     )
 
-
     nav2_bringup = TimerAction(
         period=10.0,  # TODO: Tune delay
         actions=[nav2_bringup_no_amcl_launch]
