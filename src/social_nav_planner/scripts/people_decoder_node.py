@@ -3,6 +3,7 @@
 import rclpy
 from rclpy.node import Node
 from rclpy.qos import QoSProfile, ReliabilityPolicy, HistoryPolicy, DurabilityPolicy
+from rcl_interfaces.srv import GetParameters
 
 import numpy as np
 import math
@@ -50,10 +51,13 @@ class PeopleDecoderNode(Node):
         self.distances = np.full(self.num_rays, -1.0, dtype=np.float32)
         self.agent_ids = np.full(self.num_rays, -1, dtype=np.int16)
 
-        # Map from agent name to index (for consistent IDs)
-        self.agent_name_to_index = {} 
-        self.next_agent_index = 0
+        # Map from agent name to [id, group_id] from /hunav_loader parameters
+        self.agent_name_to_data = {}
         self.last_mapping_json = None
+        
+        # Create client to hunav_loader's parameter service and load agent data
+        self.param_client = self.create_client(GetParameters, '/hunav_loader/get_parameters')
+        self.load_agent_data_from_parameters()
 
         self.latest_people = None
         self.latest_transform = None
@@ -87,7 +91,7 @@ class PeopleDecoderNode(Node):
         # Publishers
         self.distances_publisher = self.create_publisher(
             Float32MultiArray,
-            '/social_observation/distances',
+            '/social_observation/agent_distances',
             10
         )
         #TODO: Currently, the object_decoder_fuser does not alter or process the agent_ids data. Do not use data from this topic until addressed.
@@ -96,7 +100,7 @@ class PeopleDecoderNode(Node):
             '/social_observation/agent_ids',
             10
         )
-        # For ease of identifying agents by name
+        # For ease of mapping agent names to id and group_id
         self.agent_name_to_index_publisher = self.create_publisher(
             String,
             '/social_observation/agent_name_to_index',
@@ -117,6 +121,52 @@ class PeopleDecoderNode(Node):
         # self.get_logger().info(f'  - Update rate: {self.update_rate}Hz')
         # self.get_logger().info(f'  - Angular resolution: {math.degrees(self.angular_resolution):.2f}°')
 
+    # Load agent data from hunav_loader parameters
+    def load_agent_data_from_parameters(self):
+        try:
+            self.get_logger().info('Waiting for hunav_loader parameter service...')
+            while not self.param_client.wait_for_service(timeout_sec=1.0):
+                self.get_logger().info('Still waiting for hunav_loader parameter service...')
+            
+            # Get list of agents
+            req = GetParameters.Request()
+            req.names = ['agents']
+            future = self.param_client.call_async(req)
+            rclpy.spin_until_future_complete(self, future)
+            response = future.result()
+            
+            if response is None or len(response.values) == 0:
+                self.get_logger().warn('Failed to get agents parameter from hunav_loader')
+                return
+                
+            agent_names = response.values[0].string_array_value
+            self.get_logger().info(f'Got agents from hunav_loader: {agent_names}')
+            
+            # Get id and group_id for each agent
+            for agent_name in agent_names:
+                try:
+                    # Request id and group_id for this agent
+                    req = GetParameters.Request()
+                    req.names = [f'{agent_name}.id', f'{agent_name}.group_id']
+                    future = self.param_client.call_async(req)
+                    rclpy.spin_until_future_complete(self, future)
+                    response = future.result()
+                    
+                    if response is None or len(response.values) < 2:
+                        self.get_logger().warn(f'Failed to get id/group_id for agent {agent_name}')
+                        continue
+                    
+                    agent_id = response.values[0].integer_value
+                    group_id = response.values[1].integer_value
+                    
+                    self.agent_name_to_data[agent_name] = [agent_id, group_id]
+                    self.get_logger().info(f'Loaded agent {agent_name}: id={agent_id}, group_id={group_id}')
+                    
+                except Exception as e:
+                    self.get_logger().warn(f'Error getting parameters for agent {agent_name}: {e}')
+                    
+        except Exception as e:
+            self.get_logger().warn(f'Failed to load agent data from hunav_loader: {e}')
 
     def people_callback(self, msg: People):
         self.latest_people = msg
@@ -144,18 +194,16 @@ class PeopleDecoderNode(Node):
         # Reset arrays
         self.distances = np.full(self.num_rays, -1.0, dtype=np.float32)
         self.agent_ids = np.full(self.num_rays, -1, dtype=np.int16)
-        mapping_changed = False
         
         # Process each person
         for person in self.latest_people.people:
-            if person.name not in self.agent_name_to_index:
-                self.agent_name_to_index[person.name] = self.next_agent_index
-                self.next_agent_index += 1
-                mapping_changed = True
-            
-            # get agent index
-            agent_index = self.agent_name_to_index[person.name]
-
+            # Get agent data from loaded configuration
+            if person.name in self.agent_name_to_data:
+                # Use loaded configuration data
+                agent_id, group_id = self.agent_name_to_data[person.name]
+            else:
+                self.get_logger().warn(f'Agent name {person.name} not found in loaded configuration. Skipping.')
+                continue
             # Transform person position
             robot_point = self.transform_point(person.position)
             if robot_point is None:
@@ -172,10 +220,10 @@ class PeopleDecoderNode(Node):
                 # Update iff empty or current agent is closer
                 if self.distances[bin_idx] < 0 or distance < self.distances[bin_idx]:
                     self.distances[bin_idx] = distance
-                    self.agent_ids[bin_idx] = agent_index
+                    self.agent_ids[bin_idx] = agent_id
 
         # Publish observations
-        self.publish_arrays(mapping_changed)
+        self.publish_arrays()
 
 
 
@@ -243,7 +291,7 @@ class PeopleDecoderNode(Node):
 
 
     # Publish the distance and agent ID arrays.
-    def publish_arrays(self, mapping_changed=False):
+    def publish_arrays(self):
         # Publish distances
         distances_msg = Float32MultiArray()
         distances_msg.data = self.distances.tolist()
@@ -256,9 +304,9 @@ class PeopleDecoderNode(Node):
 
         self.agent_ids_publisher.publish(agent_ids_msg)
 
-        # Publish the mapping as a JSON string only if changed
-        mapping_json = json.dumps(self.agent_name_to_index)
-        if mapping_changed or self.last_mapping_json != mapping_json:
+        # Publish the mapping as a JSON string
+        mapping_json = json.dumps(self.agent_name_to_data)
+        if self.last_mapping_json != mapping_json:
             mapping_msg = String()
             mapping_msg.data = mapping_json
             self.agent_name_to_index_publisher.publish(mapping_msg)
