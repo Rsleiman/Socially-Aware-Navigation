@@ -9,7 +9,6 @@ import numpy as np
 import math
 from typing import List, Tuple, Optional
 import json
-
 from people_msgs.msg import People #type: ignore
 from std_msgs.msg import Float32MultiArray, String, Int16MultiArray
 from geometry_msgs.msg import Point
@@ -24,15 +23,20 @@ class PeopleDecoderNode(Node):
         super().__init__('people_decoder_node')
         # self.count = 0  # For debug logging
 
-        # Declare Parameters
+        # Declare Parameters #
+        # Laser parameters
         self.declare_parameter('num_rays', 240)
         self.declare_parameter('fov_degrees', 180.0)  
         self.declare_parameter('max_range', 10.0)     
-        self.declare_parameter('agent_radius', 0.3)   # Agent footprint radius in meters
         self.declare_parameter('update_rate', 5.0)    # TODO: Tune rate depending on performance vs functionality
+
+        # Transform parameters
         self.declare_parameter('robot_frame', 'front_laser') # Supposed to simulate laser data
         self.declare_parameter('world_frame', 'map')
         
+        # Agent parameters
+        self.declare_parameter('agent_radius', 0.3)   # Agent footprint radius in meters
+
         # Get parameters
         self.num_rays = self.get_parameter('num_rays').get_parameter_value().integer_value
         self.fov_degrees = self.get_parameter('fov_degrees').get_parameter_value().double_value
@@ -48,7 +52,7 @@ class PeopleDecoderNode(Node):
         self.angular_resolution = self.fov_radians / self.num_rays
         
         # Initialize arrays
-        self.distances = np.full(self.num_rays, -1.0, dtype=np.float32)
+        self.agent_distances = np.full(self.num_rays, -1.0, dtype=np.float32)
         self.agent_group_ids = np.full(self.num_rays, -1, dtype=np.int16)
 
         # Map from agent name to [id, group_id] from /hunav_loader parameters
@@ -89,7 +93,7 @@ class PeopleDecoderNode(Node):
         )
         
         # Publishers
-        self.distances_publisher = self.create_publisher(
+        self.agent_distances_publisher = self.create_publisher(
             Float32MultiArray,
             '/social_observation/agent_distances',
             10
@@ -101,9 +105,9 @@ class PeopleDecoderNode(Node):
             10
         )
         # For ease of mapping agent names to id and group_id
-        self.agent_name_to_index_publisher = self.create_publisher(
+        self.agent_name_mapping_publisher = self.create_publisher(
             String,
-            '/social_observation/agent_name_to_index',
+            '/social_observation/agent_name_to_data',
             mapping_pub_qos
         )
         
@@ -192,7 +196,7 @@ class PeopleDecoderNode(Node):
             return
             
         # Reset arrays
-        self.distances = np.full(self.num_rays, -1.0, dtype=np.float32)
+        self.agent_distances = np.full(self.num_rays, -1.0, dtype=np.float32)
         self.agent_group_ids = np.full(self.num_rays, -1, dtype=np.int16)
         
         # Process each person
@@ -205,21 +209,21 @@ class PeopleDecoderNode(Node):
                 self.get_logger().warn(f'Agent name {person.name} not found in loaded configuration. Skipping.')
                 continue
             # Transform person position
-            robot_point = self.transform_point(person.position)
-            if robot_point is None:
+            person_point_robot_frame = self.transform_point(person.position)
+            if person_point_robot_frame is None:
                 continue
                 
-            # Compute bearing and distance
-            bearing, distance = self.compute_bearing_and_distance(robot_point)
+            # Compute bearing and agent_distance
+            bearing, agent_distance = self.compute_bearing_and_agent_distance(person_point_robot_frame)
             
             # Get angular bins for the agent
-            bins = self.get_angular_bins_for_agent(bearing, distance)
+            bins = self.get_angular_bins_for_agent(bearing, agent_distance)
             
             # Update observation arrays
             for bin_idx in bins:
                 # Update iff empty or current agent is closer
-                if self.distances[bin_idx] < 0 or distance < self.distances[bin_idx]:
-                    self.distances[bin_idx] = distance
+                if self.agent_distances[bin_idx] < 0 or agent_distance < self.agent_distances[bin_idx]:
+                    self.agent_distances[bin_idx] = agent_distance
                     self.agent_group_ids[bin_idx] = group_id
 
         # Publish observations
@@ -231,7 +235,7 @@ class PeopleDecoderNode(Node):
         try:
             # Create a PointStamped message
             point_stamped = tf2_geometry_msgs.PointStamped()
-            point_stamped.header.frame_id = self.latest_people.header.frame_id
+            point_stamped.header.frame_id = self.latest_people.header.frame_id #TODO: Should this be world frame instead?
             point_stamped.point = point
             
             # Transform the point using cached transform
@@ -245,21 +249,21 @@ class PeopleDecoderNode(Node):
 
     
 
-    def compute_bearing_and_distance(self, point: Point) -> Tuple[float, float]:
-        distance = math.sqrt(point.x**2 + point.y**2)
+    def compute_bearing_and_agent_distance(self, point: Point) -> Tuple[float, float]:
+        agent_distance = math.sqrt(point.x**2 + point.y**2)
         bearing = math.atan2(point.y, point.x)
-        return bearing, distance
+        return bearing, agent_distance
 
-    def get_angular_bins_for_agent(self, bearing: float, distance: float) -> List[int]:
+    def get_angular_bins_for_agent(self, bearing: float, agent_distance: float) -> List[int]:
         bins = []
         
         # Skip if agent is too far or behind robot
-        if distance > self.max_range:
+        if agent_distance > self.max_range:
             return bins
             
         # Calculate angular span based on agent radius and distance
-        if distance > 0:
-            angular_span = math.atan2(self.agent_radius, distance)
+        if agent_distance > 0:
+            angular_span = math.atan2(self.agent_radius, agent_distance)
         else:
             angular_span = self.angular_resolution
             
@@ -290,13 +294,13 @@ class PeopleDecoderNode(Node):
         return bins
 
 
-    # Publish the distance and agent ID arrays.
+    # Publish the agent_distance and agent ID arrays.
     def publish_arrays(self):
-        # Publish distances
-        distances_msg = Float32MultiArray()
-        distances_msg.data = self.distances.tolist()
-        
-        self.distances_publisher.publish(distances_msg)
+        # Publish agent_distances
+        agent_distances_msg = Float32MultiArray()
+        agent_distances_msg.data = self.agent_distances.tolist()
+
+        self.agent_distances_publisher.publish(agent_distances_msg)
 
         # Publish agent IDs
         agent_group_ids_msg = Int16MultiArray()
@@ -309,14 +313,14 @@ class PeopleDecoderNode(Node):
         if self.last_mapping_json != mapping_json:
             mapping_msg = String()
             mapping_msg.data = mapping_json
-            self.agent_name_to_index_publisher.publish(mapping_msg)
+            self.agent_name_mapping_publisher.publish(mapping_msg)
             self.last_mapping_json = mapping_json
 
         # # Debug logging
         # self.count += 1
         # if self.count % 10 == 0:  # Log every 10th publish
         #     self.get_logger().info(f'Published mapping: {mapping_json}\n')
-        #     self.get_logger().info(f'Published distances: {[dist for dist in self.distances.tolist()]}\n\n')
+        #     self.get_logger().info(f'Published agent distances: {[dist for dist in self.agent_distances.tolist()]}\n\n')
         #     self.get_logger().info(f'Published agent IDs: {[int(idx) for idx in self.agent_group_ids]}\n\n')
 
 

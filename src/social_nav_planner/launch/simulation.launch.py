@@ -387,6 +387,10 @@ def generate_launch_description():
     # Extra Nodes and Events
     # ----------------------------------------------------------
 
+    # ----------------------------------------------------------
+    # Input Nodes for SANG RL Implementation #TODO: Create ifcondition for each implementation [SANG, SANG+holonomic, etc.]
+    # ----------------------------------------------------------
+
     # People decoder node for policy input
     people_decoder_node = Node(
         package="social_nav_planner",
@@ -402,6 +406,7 @@ def generate_launch_description():
             'world_frame': 'map'
         }],
         output="screen",
+        # condition=IfCondition(PythonExpression(["'", sys.implementation, "' in ['SANG',SANG+holonomic']"])) #TODO: Think of altnerative approaches (custom launch file for each implementation?)
     )
 
     # Obstacle decoder node (converts laser scan to obstacle distances)
@@ -417,16 +422,45 @@ def generate_launch_description():
             "use_sim_time": True
         }],
         output="screen",
+        # condition=IfCondition(...)
     )
 
-    # Object decoder fuser (combines people and obstacle data with occlusion) #TODO: Plus goal and group_id data
+    # Goal decoder node (converts goal pose to goal distances)
+    goal_decoder_node = Node(
+        package="social_nav_planner",
+        executable="goal_decoder_node.py",
+        name="goal_decoder_node",
+        parameters=[{
+            'num_rays': 240,
+            'fov_degrees': 180.0,
+            'max_range': 10.0,
+            'update_rate': 5.0,  # Consistent RL rate
+            'robot_frame': 'front_laser',  # Changed to match laser frame
+            'world_frame': 'map',
+            "use_sim_time": True
+        }],
+        output="screen",
+        # condition=IfCondition(...)
+    )
+
+    # Goal pose bridge (from RViz clicked points to goal_pose topic)
+    goal_pose_bridge_node = Node(
+        package="social_nav_planner",
+        executable="goal_pose_bridge.py",
+        name="goal_pose_bridge",
+        parameters=[{"use_sim_time": True}],
+        output="screen",
+    )
+
+    # Object decoder fuser (combines people, obstacle and goal data with occlusion) #TODO: Plus goal and group_id data
     object_decoder_fuser_node = Node(
         package="social_nav_planner",
         executable="object_decoder_fuser.py",
         name="object_decoder_fuser",
         parameters=[{
             "num_rays": 240,
-            "update_rate": 5.0  # Consistent RL rate
+            "update_rate": 5.0,  # Consistent RL rate
+            "max_time_diff": 0.1
         }],
         output="screen",
     )
@@ -436,10 +470,12 @@ def generate_launch_description():
             target_action=spawn_go2_node,
             on_start=[
                 TimerAction(
-                    period=5.0,
+                    period=3.0,
                     actions=[
                         people_decoder_node,
                         obstacle_decoder_node,
+                        goal_decoder_node,
+                        goal_pose_bridge_node,
                         TimerAction(
                             period=3.0,  # Start fuser after decoders
                             actions=[object_decoder_fuser_node]
@@ -451,13 +487,11 @@ def generate_launch_description():
     )
 
 
+
+
     # ----------------------------------------------------------
     # Declare the launch arguments
     # ----------------------------------------------------------
-    TimerAction(
-        period=15.0,  # Start after simulation is ready
-        actions=[people_decoder_node]
-    )
 
 
 

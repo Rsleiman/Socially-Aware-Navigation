@@ -29,6 +29,8 @@ install(PROGRAMS
   scripts/metrics_recorder.py
   scripts/people_decoder_node.py
   scripts/obstacle_decoder_node.py
+  scripts/goal_decoder_node.py
+  scripts/goal_pose_bridge.py
   scripts/object_decoder_fuser.py
   DESTINATION lib/${PROJECT_NAME}
 )

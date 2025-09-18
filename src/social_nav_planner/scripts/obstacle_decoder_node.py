@@ -15,7 +15,8 @@ class ObstacleDecoderNode(Node):
     def __init__(self):
         super().__init__('obstacle_decoder_node')
 
-        # Declare Parameters
+        # Declare Parameters #
+        # Laser parameters
         self.declare_parameter('num_rays', 240)
         self.declare_parameter('fov_degrees', 180.0)  
         self.declare_parameter('max_range', 10.0)     
