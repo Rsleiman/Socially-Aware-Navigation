@@ -49,7 +49,7 @@ class PeopleDecoderNode(Node):
         
         # Initialize arrays
         self.distances = np.full(self.num_rays, -1.0, dtype=np.float32)
-        self.agent_ids = np.full(self.num_rays, -1, dtype=np.int16)
+        self.agent_group_ids = np.full(self.num_rays, -1, dtype=np.int16)
 
         # Map from agent name to [id, group_id] from /hunav_loader parameters
         self.agent_name_to_data = {}
@@ -94,10 +94,10 @@ class PeopleDecoderNode(Node):
             '/social_observation/agent_distances',
             10
         )
-        #TODO: Currently, the object_decoder_fuser does not alter or process the agent_ids data. Do not use data from this topic until addressed.
-        self.agent_ids_publisher = self.create_publisher(
+        #TODO: Currently, the object_decoder_fuser does not alter or process the agent_group_ids data. Do not use data from this topic until addressed.
+        self.agent_group_ids_publisher = self.create_publisher(
             Int16MultiArray,
-            '/social_observation/agent_ids',
+            '/social_observation/agent_group_ids',
             10
         )
         # For ease of mapping agent names to id and group_id
@@ -193,7 +193,7 @@ class PeopleDecoderNode(Node):
             
         # Reset arrays
         self.distances = np.full(self.num_rays, -1.0, dtype=np.float32)
-        self.agent_ids = np.full(self.num_rays, -1, dtype=np.int16)
+        self.agent_group_ids = np.full(self.num_rays, -1, dtype=np.int16)
         
         # Process each person
         for person in self.latest_people.people:
@@ -220,7 +220,7 @@ class PeopleDecoderNode(Node):
                 # Update iff empty or current agent is closer
                 if self.distances[bin_idx] < 0 or distance < self.distances[bin_idx]:
                     self.distances[bin_idx] = distance
-                    self.agent_ids[bin_idx] = agent_id
+                    self.agent_group_ids[bin_idx] = group_id
 
         # Publish observations
         self.publish_arrays()
@@ -299,10 +299,10 @@ class PeopleDecoderNode(Node):
         self.distances_publisher.publish(distances_msg)
 
         # Publish agent IDs
-        agent_ids_msg = Int16MultiArray()
-        agent_ids_msg.data = self.agent_ids.tolist()
+        agent_group_ids_msg = Int16MultiArray()
+        agent_group_ids_msg.data = self.agent_group_ids.tolist()
 
-        self.agent_ids_publisher.publish(agent_ids_msg)
+        self.agent_group_ids_publisher.publish(agent_group_ids_msg)
 
         # Publish the mapping as a JSON string
         mapping_json = json.dumps(self.agent_name_to_data)
@@ -317,7 +317,7 @@ class PeopleDecoderNode(Node):
         # if self.count % 10 == 0:  # Log every 10th publish
         #     self.get_logger().info(f'Published mapping: {mapping_json}\n')
         #     self.get_logger().info(f'Published distances: {[dist for dist in self.distances.tolist()]}\n\n')
-        #     self.get_logger().info(f'Published agent IDs: {[int(idx) for idx in self.agent_ids]}\n\n')
+        #     self.get_logger().info(f'Published agent IDs: {[int(idx) for idx in self.agent_group_ids]}\n\n')
 
 
 def main(args=None):
