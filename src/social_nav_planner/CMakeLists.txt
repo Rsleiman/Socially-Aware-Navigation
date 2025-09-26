@@ -23,6 +23,8 @@ install(DIRECTORY
   DESTINATION share/${PROJECT_NAME}
 )
 
+ament_python_install_package(${PROJECT_NAME})
+
 install(PROGRAMS
   scripts/path_planner.py
   scripts/groundtruth_amcl.py
@@ -32,6 +34,7 @@ install(PROGRAMS
   scripts/goal_decoder_node.py
   scripts/goal_pose_bridge.py
   scripts/object_decoder_fuser.py
+  scripts/cmd_vel_smoother.py
   DESTINATION lib/${PROJECT_NAME}
 )
 
