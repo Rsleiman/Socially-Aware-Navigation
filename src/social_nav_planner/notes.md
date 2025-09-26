@@ -17,7 +17,7 @@ Perhaps setting group's social forces to 0 while walking agents have positive so
 13. Plan steps to automate and script the RL process (For every decision taken, you must justify, with evidence, why you are taking it in the dissertation vs the alternative. Eg. Does SANG do this? Is it simpler to implement? Is it more realistic of real world scenarios? etc.):
 - CREATING ENVIRONMENTS
   - Create a node that generates random agent data (random number of groups, random group sizes, random group positions)
-    - Decide whether we want every agent in a group, LEANING TOWARDS YES, since this project is abuout social navigation around static groups
+    - Every agent should be in a group
     - This data should satisfy certain constraints such as:
       - Group locations created within a certain boundary in a map
       - No overlapping agents groups
@@ -61,9 +61,10 @@ Perhaps setting group's social forces to 0 while walking agents have positive so
   - Create a node/script that records the hunav metrics for each test run and saves them to a csv or similar file for easy comparison between different implementations.
   - Create visualisations of the results (graphs, charts, etc) to compare performance between different implementations.
 
-14. Decide on FOV and angular resolution of the goal decoder laser scan. (Currently 240 rays over 180 degrees, i.e, 0.75 degrees per ray).
-  - A narrower FOV means less chance of goals being detected, i.e. more -1 readings, potentially making it harder for the RL algorithm to learn.
-  - Maybe test an FOV of 270 degrees (i.e, 3/4 of a full circle), then experiment with num rays (240, 360, 480)
+14. ~~Decide on FOV and angular resolution of the goal decoder laser scan. (Currently 240 rays over 180 degrees, i.e, 0.75 degrees per ray).~~
+  ~~- A narrower FOV means less chance of goals being detected, i.e. more -1 readings, potentially making it harder for the RL algorithm to learn.~~
+  ~~- Maybe test an FOV of 270 degrees (i.e, 3/4 of a full circle), then experiment with num rays (240, 360, 480)~~
+16. Move output and log files to a dedicated results folder outside of install dir?
 
 ### Notes
 1. Must run 'source /usr/share/gazebo/setup.sh' before running launch files
