@@ -1,6 +1,7 @@
 <?xml version="1.0"?>
 
 <robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+    <!-- Visual laser link at original position -->
     <joint name="chassis_front_laser_joint" type="fixed">
         <axis xyz="0 0 1"/>
         <origin rpy="0 0 0" xyz="0.225 0 0.105"/>
@@ -26,7 +27,22 @@
         <inertia ixx="1e-6" ixy="0" ixz="0" iyy="1e-6" iyz="0" izz="1e-6"/>
         </inertial>
     </link>
-    <gazebo reference="front_laser">
+    
+    <!-- Sensor frame elevated by 0.3m for laser scanning -->
+    <joint name="front_laser_sensor_joint" type="fixed">
+        <axis xyz="0 0 1"/>
+        <origin rpy="0 0 0" xyz="0 0 0.3"/>
+        <parent link="front_laser"/>
+        <child link="front_laser_sensor"/>
+    </joint>
+    <link name="front_laser_sensor">
+        <inertial>
+        <mass value="1e-5"/>
+        <origin rpy="0 0 0" xyz="0 0 0"/>
+        <inertia ixx="1e-6" ixy="0" ixz="0" iyy="1e-6" iyz="0" izz="1e-6"/>
+        </inertial>
+    </link>
+    <gazebo reference="front_laser_sensor">
         <sensor name="front_laser_sensor" type="ray">
             <always_on>true</always_on>
             <visualize>false</visualize>
@@ -37,8 +53,8 @@
                 <horizontal>
                 <samples>240</samples>
                 <resolution>1.000000</resolution>
-                <min_angle>-1.570796</min_angle> // -90 degrees
-                <max_angle>1.570796</max_angle> // 90 degrees
+                <min_angle>-2.356194</min_angle> // -135 degrees. Total Field of View is 270 degrees
+                <max_angle>2.356194</max_angle>  // 135 degrees. Total Field of View is 270 degrees
                 </horizontal>
             </scan>
             <range>
@@ -57,7 +73,7 @@
                 <remapping>~/out:=scan</remapping>
             </ros>
             <output_type>sensor_msgs/LaserScan</output_type>
-            <frame_name>front_laser</frame_name>
+            <frame_name>front_laser_sensor</frame_name>
             </plugin>
         </sensor>
     </gazebo>
