@@ -15,8 +15,6 @@ from geometry_msgs.msg import Point
 import tf2_ros
 import tf2_geometry_msgs
 
-#TODO: Add functionality to handle group_id (if any)
-
 
 class PeopleDecoderNode(Node):    
     def __init__(self):
@@ -98,7 +96,6 @@ class PeopleDecoderNode(Node):
             '/social_observation/agent_distances',
             10
         )
-        #TODO: Currently, the object_decoder_fuser does not alter or process the agent_group_ids data. Do not use data from this topic until addressed.
         self.agent_group_ids_publisher = self.create_publisher(
             Int16MultiArray,
             '/social_observation/agent_group_ids',

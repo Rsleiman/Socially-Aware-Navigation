@@ -103,7 +103,7 @@ class GoalDecoder(Node):
 
     def process_and_publish(self):
         if self.latest_goal_pose is None:
-            self.get_logger().warn("No goal pose received yet.")
+            # self.get_logger().warn("No goal pose received yet.")
             return
 
         try:
@@ -121,8 +121,7 @@ class GoalDecoder(Node):
         # Transform the goal pose to the robot's frame
         transformed_goal_point = self.transform_point(self.latest_goal_pose.pose.position)
         if transformed_goal_point is None:
-            self.get_logger().warn("Goal point transformation failed. Publishing empty array.")
-            self.publish_array()  # Publish empty array if transformation fails
+            self.get_logger().warn("Goal point transformation failed. Skipping publish.")
             return
 
         # Extract x, y coordinates of the goal in the robot's frame
@@ -138,7 +137,6 @@ class GoalDecoder(Node):
         self.goal_distances.fill(-1.0)
 
         # Assign goal distance in closest ray if the goal is within laser's FOV
-        # #TODO: Check logic
         if ((-self.fov_radians/2) <= angle_to_goal <= (self.fov_radians/2)):
 
             # Determine which ray corresponds to this angle
@@ -154,7 +152,7 @@ class GoalDecoder(Node):
             # self.get_logger().info(f"Published goal distances: {self.goal_distances}")
 
         else:
-            self.get_logger().info("Goal is outside the laser's field of view.")
+            # self.get_logger().info("Goal is outside the laser's field of view.")
             self.publish_array()  # Publish array with all -1s if goal is out of FOV
             
 
@@ -166,7 +164,7 @@ class GoalDecoder(Node):
             point_stamped.header.stamp = rclpy.time.Time().to_msg() 
             point_stamped.point = point
 
-            self.get_logger().info(f"Transforming point: {point_stamped}")
+            # self.get_logger().info(f"Transforming point: {point_stamped}")
 
             # Transform the point using cached transform
             transformed_point = tf2_geometry_msgs.do_transform_point(point_stamped, self.latest_transform)
@@ -174,7 +172,7 @@ class GoalDecoder(Node):
             return transformed_point.point
             
         except Exception as e:
-            self.get_logger().info(f'TF2 point transformation failed: {e}')
+            self.get_logger().debug(f'TF2 point transformation failed: {e}')
             return None
         
 

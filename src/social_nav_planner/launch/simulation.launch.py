@@ -60,6 +60,7 @@ def generate_launch_description():
     gz_R = LaunchConfiguration("gzpose_R")
     gz_P = LaunchConfiguration("gzpose_P")
     gz_Y = LaunchConfiguration("gzpose_Y")
+    fov = LaunchConfiguration("fov_degrees")
 
 
     # HuNav agent configuration file
@@ -134,12 +135,7 @@ def generate_launch_description():
     # ----------------------------------------------------------
     config_file_name = "params.yaml" 
     pkg_dir = get_package_share_directory("hunav_gazebo_wrapper") 
-    config_file = path.join(pkg_dir, "launch", config_file_name) 
-    # Alternatively:
-    # path.join(
-    #   launch_ros.substitutions.FindPackageShare(package="champ_gazebo").find("champ_gazebo"),
-    #   "config/gazebo.yaml")
-    
+    config_file = path.join(pkg_dir, "config", config_file_name) 
     world_path = PathJoinSubstitution([
         FindPackageShare("hunav_gazebo_wrapper"),
         "worlds",
@@ -150,7 +146,6 @@ def generate_launch_description():
         "gzserver ",
          world_path, 
         _boolean_command("verbose"), '',
-        # _boolean_command("pause"), '',
         '-s ', "libgazebo_ros_init.so",
         '-s ', "libgazebo_ros_factory.so",
         #'-s ', #"libgazebo_ros_state.so",
@@ -220,16 +215,6 @@ def generate_launch_description():
         arguments=["joint_group_effort_controller"],
         condition=IfCondition(spawn_go2)
     )
-
-    # TODO: May not be needed
-    # contact_sensor = Node(
-    #     package="champ_gazebo",
-    #     executable="contact_sensor",
-    #     output="screen",
-    #     parameters=[{"use_sim_time": LaunchConfiguration("use_sim_time")}, links_config],
-    #     condition=IfCondition(LaunchConfiguration("spawn_go2"))
-    # )
-
 
     #  Go2 bringup and spawn
     go2_bringup = IncludeLaunchDescription(
@@ -391,6 +376,7 @@ def generate_launch_description():
     # Input Nodes for SANG RL Implementation #TODO: Create ifcondition for each implementation [SANG, SANG+holonomic, etc.]
     # ----------------------------------------------------------
 
+
     # People decoder node for policy input
     people_decoder_node = Node(
         package="social_nav_planner",
@@ -398,11 +384,11 @@ def generate_launch_description():
         name="people_decoder_node",
         parameters=[{
             'num_rays': 240,
-            'fov_degrees': 180.0,
+            'fov_degrees': fov,
             'max_range': 10.0,
             'agent_radius': 0.3,
-            'update_rate': 5.0,  # Reduced for RL efficiency
-            'robot_frame': 'front_laser',  # Changed to match laser frame
+            'update_rate': 10.0, 
+            'robot_frame': 'front_laser_sensor',  
             'world_frame': 'map'
         }],
         output="screen",
@@ -416,9 +402,9 @@ def generate_launch_description():
         name="obstacle_decoder_node",
         parameters=[{
             'num_rays': 240,
-            'fov_degrees': 180.0,
+            'fov_degrees': fov,
             'max_range': 10.0,
-            'update_rate': 5.0,  # Consistent RL rate
+            'update_rate': 10.0, 
             "use_sim_time": True
         }],
         output="screen",
@@ -432,10 +418,10 @@ def generate_launch_description():
         name="goal_decoder_node",
         parameters=[{
             'num_rays': 240,
-            'fov_degrees': 180.0,
+            'fov_degrees': fov,
             'max_range': 10.0,
-            'update_rate': 5.0,  # Consistent RL rate
-            'robot_frame': 'front_laser',  # Changed to match laser frame
+            'update_rate': 10.0,  
+            'robot_frame': 'front_laser_sensor', 
             'world_frame': 'map',
             "use_sim_time": True
         }],
@@ -459,10 +445,30 @@ def generate_launch_description():
         name="object_decoder_fuser",
         parameters=[{
             "num_rays": 240,
-            "update_rate": 5.0,  # Consistent RL rate
+            "update_rate": 10.0,  
             "max_time_diff": 0.1
         }],
         output="screen",
+    )
+
+    # CMD Velocity Smoother - smooths commands for the Go2 robot for RL action outputs
+    cmd_vel_smoother_node = Node(
+        package="social_nav_planner", 
+        executable="cmd_vel_smoother.py",
+        name="cmd_vel_smoother",
+        parameters=[{
+            "publish_rate": 20.0,       
+            "timeout": 2.0,            
+            "max_linear_accel": 3.0,    
+            "max_angular_accel": 5.0,
+            "max_linear_x": 0.7,        # See gait.yaml in go2_config
+            "max_linear_y": 0.5,
+            "max_angular_z": 0.7,
+            "smoothing_factor": 0.10,   # Lower = less smoothing, more responsive
+            "use_sim_time": True
+        }],
+        output="screen",
+        # condition=IfCondition(...)  # TODO: add condition to only run during RL training?
     )
 
     object_decoder_event = RegisterEventHandler(
@@ -476,6 +482,7 @@ def generate_launch_description():
                         obstacle_decoder_node,
                         goal_decoder_node,
                         goal_pose_bridge_node,
+                        cmd_vel_smoother_node,  
                         TimerAction(
                             period=3.0,  # Start fuser after decoders
                             actions=[object_decoder_fuser_node]
@@ -485,14 +492,6 @@ def generate_launch_description():
             ]
         )
     )
-
-
-
-
-    # ----------------------------------------------------------
-    # Declare the launch arguments
-    # ----------------------------------------------------------
-
 
 
     # ----------------------------------------------------------
@@ -550,10 +549,6 @@ def generate_launch_description():
         "verbose", default_value="true",
         description="Set 'true' to increase messages written to terminal."
     )
-    # declare_arg_pause = DeclareLaunchArgument(
-    #     "pause", default_value="true",
-    #     description="Set 'true' to launch Gazebo paused."
-    # )
     declare_arg_namespace = DeclareLaunchArgument(
         "robot_namespace", default_value="",
         description="The type of robot")
@@ -578,17 +573,13 @@ def generate_launch_description():
             description="The robot initial pitch angle in the world")
     declare_arg_pY = DeclareLaunchArgument("gzpose_Y", default_value="1.0",
             description="The robot initial yaw angle in the world")
-    
-    # Sensors toggles (left for completeness. TODO: Go2 stack typically ignores these here)
-    # declare_arg_laser = DeclareLaunchArgument("laser_model", default_value="sick-571-gpu",
-    #         description="the laser model to be used")
-    # declare_arg_rgbd = DeclareLaunchArgument("rgbd_sensors", default_value="false",
-    #         description="whether to use rgbd cameras or not")
-
-    # Optional flag to spawn Go2 via go2_config
     declare_spawn_go2 = DeclareLaunchArgument(
         "spawn_go2", default_value="true",
         description="If True, include go2_config/launch/gazebo.launch.py to spawn the robot"
+    )
+    declare_fov = DeclareLaunchArgument(
+        "fov_degrees", default_value="270.0",
+        description="Field of view in degrees for the decoders. NOTE: You must also change the angle_min and angle_max in laser.xacro"
     )
 
 
@@ -613,10 +604,7 @@ def generate_launch_description():
     ld.add_action(declare_use_sim_time)
     ld.add_action(declare_use_rviz)
     ld.add_action(declare_arg_verbose)
-    # ld.add_action(declare_arg_pause) #TODO: Seems to cause robot issues
     ld.add_action(declare_arg_namespace)
-    # ld.add_action(declare_arg_laser)
-    # ld.add_action(declare_arg_rgbd)
     ld.add_action(declare_arg_px)
     ld.add_action(declare_arg_py)
     ld.add_action(declare_arg_pz)
@@ -624,6 +612,7 @@ def generate_launch_description():
     ld.add_action(declare_arg_pP)
     ld.add_action(declare_arg_pY)
     ld.add_action(declare_spawn_go2)
+    ld.add_action(declare_fov)
 
     # Generate the world with the agents
     ld.add_action(hunav_loader_node)

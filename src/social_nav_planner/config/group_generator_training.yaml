@@ -1,0 +1,40 @@
+train_env_1:
+  - n: 2
+    distance: 0.8
+    centroid: [-3, -2]
+  - n: 4
+    distance: 1.4
+    centroid: [3, 2]
+  - n: 3
+    distance: 1.2
+    centroid: [3, -3]
+  - n: 3
+    distance: 1.8
+    centroid: [-2, 2]
+
+train_env_2:
+  - n: 5
+    distance: 1.0
+    centroid: [-2, 2]
+  - n: 2
+    distance: 2.0
+    centroid: [4, -1]
+  - n: 3
+    distance: 1.6
+    centroid: [-4, -4]
+
+test_env_1:
+  - n: 2
+    distance: 0.6
+    centroid: [1, 1]
+  - n: 3
+    distance: 0.7
+    centroid: [-2, 3]
+
+test_env_2:
+  - n: 4
+    distance: 2.2
+    centroid: [3, -3]
+  - n: 2
+    distance: 2.5
+    centroid: [-3, 0]

@@ -40,10 +40,12 @@ class ObjectDecoderFuser(Node):
     def __init__(self):
         super().__init__('object_decoder_fuser')
         
+        # self.log_count = 0  # For controlling log frequency
+
         # Parameters
         self.declare_parameter('num_rays', 240)
         self.declare_parameter('update_rate', 5.0)  # Hz - Consistent with other nodes for RL
-        self.declare_parameter('max_time_diff', 0.1)  # Max time difference for synchronisation (seconds)
+        self.declare_parameter('max_time_diff', 0.5)  # Max time difference for synchronisation (seconds)
         
         self.num_rays = self.get_parameter('num_rays').get_parameter_value().integer_value
         self.update_rate = self.get_parameter('update_rate').get_parameter_value().double_value
@@ -58,12 +60,11 @@ class ObjectDecoderFuser(Node):
         self.occluded_agent_distances = np.full(self.num_rays, -1.0, dtype=np.float32)
         self.occluded_obstacle_distances = np.full(self.num_rays, -1.0, dtype=np.float32)
         self.occluded_agent_group_ids = np.full(self.num_rays, -1, dtype=np.int32)
-        self.goal_distances = np.full(self.num_rays, -1.0, dtype=np.float32) #TODO: Determine whether to occlude goals behind obstacles. Leaning towards no.
+        self.goal_distances = np.full(self.num_rays, -1.0, dtype=np.float32)
     
         # Initialise combined message object
         # Flattened format: [agent_0, ..., agent_239, obstacle_0, ..., obstacle_239, group_id_0, ..., group_id_239, goal_distance_0, ..., goal_distance_239]
         self.combined_msg = Float32MultiArray()
-        
         
         # QoS Profile
         qos = QoSProfile(
@@ -135,7 +136,7 @@ class ObjectDecoderFuser(Node):
         self.get_logger().info(f'  - Number of rays: {self.num_rays}')
         self.get_logger().info(f'  - Update rate: {self.update_rate}Hz')
         self.get_logger().info(f'  - Max time diff: {self.max_time_diff}s (for synchronisation)')
-        self.get_logger().info('  - Frame consistency: Both inputs in front_laser frame')
+        self.get_logger().info('  - Frame consistency: Both inputs in front_laser_sensor frame')
         self.get_logger().info('  - Output topics:')
         self.get_logger().info('    * /social_observation/occluded_agent_distances')
         self.get_logger().info('    * /social_observation/occluded_obstacle_distances') 
@@ -181,7 +182,7 @@ class ObjectDecoderFuser(Node):
             self.latest_obstacle_distances is None or
             self.latest_agent_group_ids is None or
             self.latest_goal_distances is None):
-            self.get_logger().warn("Waiting for all input arrays to be available...")
+            # self.get_logger().warn("Waiting for all input arrays to be available...")
             return False
         
         # Check the maximum time difference between any of the input arrays is within the allowed threshold
@@ -203,12 +204,21 @@ class ObjectDecoderFuser(Node):
             "goal vs group_id"
         ]
         highest_time_diff = max(time_diffs)
+
+        # prematurely kill ROS if time diff too high
+        #TODO: I believe this happens when gazebo pauses on its own, need to find out why
+        #TODO: This doesnt kill the entire programme
+        if highest_time_diff > 15.0:
+            self.get_logger().error(f"FATAL: AT LEAST ONE ARRAY HAS LIKELY DEACTIVATED.")
+            return False
+         
         if highest_time_diff <= self.max_time_diff:
-            self.get_logger().info(f"Input arrays synchronised: {highest_time_diff}s <= threshold: {self.max_time_diff}s")
+            # self.get_logger().info(f"Input arrays synchronised: {highest_time_diff}s <= threshold: {self.max_time_diff}s")
             return True
         else:
-            self.get_logger().warn(f"Input arrays not synchronised: {highest_time_diff:.4f}s > threshold: {self.max_time_diff:.4f}s. \
-                                   Culprit: {time_diff_labels[np.argmax(time_diffs)]}")
+            # self.log_count += 1
+            # if self.log_count % 10 == 0: # Only log every 10th
+                # self.get_logger().warn(f"Input arrays not synchronised: {highest_time_diff:.2f}s. Culprit: {time_diff_labels[time_diffs.index(highest_time_diff)]}")
             return False
 
 
@@ -217,7 +227,6 @@ class ObjectDecoderFuser(Node):
         self.occluded_agent_distances.fill(-1.0)
         self.occluded_obstacle_distances.fill(-1.0)
         self.occluded_agent_group_ids.fill(-1) # Occlude the same way as agent distances
-        self.goal_distances.fill(-1.0) 
 
         if not self.arrays_synchronised():
             #TODO: Determine what to do if not synchronised, leaning towards publishing nothing (or last valid?)
@@ -237,7 +246,7 @@ class ObjectDecoderFuser(Node):
         # Case 1: Both agents and obstacles present, occlude futher object
         both_present = agents_valid & obstacles_valid
         if np.any(both_present):
-            self.get_logger().info("Both agents and obstacles present")
+            # self.get_logger().info("Both agents and obstacles present")
             # When agents are closer:
             agents_closer = both_present & (agent_distances <= obstacle_distances)
             self.occluded_agent_distances[agents_closer] = agent_distances[agents_closer]
@@ -250,37 +259,25 @@ class ObjectDecoderFuser(Node):
         # Case 2: Only agents present
         only_agents = agents_valid & ~obstacles_valid
         if np.any(only_agents):
-            self.get_logger().info("Only agents present")
+            # self.get_logger().info("Only agents present")
             self.occluded_agent_distances[only_agents] = agent_distances[only_agents]
             self.occluded_agent_group_ids[only_agents] = agent_group_ids[only_agents]
 
         # Case 3: Only obstacles present
         only_obstacles = obstacles_valid & ~agents_valid
         if np.any(only_obstacles):
-            self.get_logger().info("Only obstacles present")
+            # self.get_logger().info("Only obstacles present")
             self.occluded_obstacle_distances[only_obstacles] = obstacle_distances[only_obstacles]
 
         # Process goal distances
-        self.goal_distances = goal_distances
+        np.copyto(self.goal_distances, goal_distances, casting='unsafe')
 
         # Publish the fused arrays (no occlusion needed)
         self.publish_arrays()
 
 
     def publish_arrays(self):  
-        self.get_logger().info("Publishing fused object array...")     
-        
-        #TODO: Should publish occlusion filtered individual arrays separately? Leaning towards no
-        # # Publish fused agent distances using pre-allocated message
-        # self.agent_msg.data = self.occluded_agent_distances.tolist()
-        # self.fused_agents_pub.publish(self.agent_msg)
-
-        # # Publish fused obstacle distances using pre-allocated message
-        # self.obstacle_msg.data = self.occluded_obstacle_distances.tolist()
-        # self.fused_obstacles_pub.publish(self.obstacle_msg)
-
-        # TODO: Do the same with goal and agent_group_id columns
-        # Publish combined 2x240 observation array using pre-allocated message
+        # self.get_logger().info("Publishing fused object array...")     
         # Flattened format: [agent_0, ..., agent_239, obstacle_0, ..., obstacle_239]
         combined_data = np.concatenate(
             [
@@ -292,7 +289,7 @@ class ObjectDecoderFuser(Node):
         )
         self.combined_msg.data = combined_data.tolist()
         self.fused_object_pub.publish(self.combined_msg)
-        self.get_logger().info('Published fused object array')
+        # self.get_logger().info('Published fused object array')
 
 def main(args=None):
     rclpy.init(args=args)
