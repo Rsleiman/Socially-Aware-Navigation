@@ -1,0 +1,377 @@
+hunav_loader:
+  ros__parameters:
+    map: default
+    publish_people: true
+    agents:
+    - person1
+    - person2
+    - person3
+    - person4
+    - person5
+    - person6
+    - person7
+    - person8
+    - person9
+    - person10
+    - person11
+    - person12
+    person1:
+      id: 1
+      skin: 0
+      group_id: 1
+      max_vel: 0.5
+      radius: 0.4
+      behavior:
+        type: 1
+        configuration: 1
+        duration: 40.0
+        once: true
+        vel: 1.0
+        dist: 4.5
+        goal_force_factor: 2.0
+        obstacle_force_factor: 10.0
+        social_force_factor: 5.0
+        other_force_factor: 20.0
+      init_pose:
+        x: -2.6
+        y: -2.0
+        z: 1.25
+        h: 3.14
+      goal_radius: 0.3
+      cyclic_goals: true
+      goals:
+      - g0
+      g0:
+        x: -2.6
+        y: -2.0
+        h: 3.14
+    person2:
+      id: 2
+      skin: 1
+      group_id: 1
+      max_vel: 0.5
+      radius: 0.4
+      behavior:
+        type: 1
+        configuration: 1
+        duration: 40.0
+        once: true
+        vel: 1.0
+        dist: 4.5
+        goal_force_factor: 2.0
+        obstacle_force_factor: 10.0
+        social_force_factor: 5.0
+        other_force_factor: 20.0
+      init_pose:
+        x: -3.4
+        y: -2.0
+        z: 1.25
+        h: 0.0
+      goal_radius: 0.3
+      cyclic_goals: true
+      goals:
+      - g0
+      g0:
+        x: -3.4
+        y: -2.0
+        h: 0.0
+    person3:
+      id: 3
+      skin: 2
+      group_id: 2
+      max_vel: 0.5
+      radius: 0.4
+      behavior:
+        type: 1
+        configuration: 1
+        duration: 40.0
+        once: true
+        vel: 1.0
+        dist: 4.5
+        goal_force_factor: 2.0
+        obstacle_force_factor: 10.0
+        social_force_factor: 5.0
+        other_force_factor: 20.0
+      init_pose:
+        x: 3.99
+        y: 2.0
+        z: 1.25
+        h: 3.14
+      goal_radius: 0.3
+      cyclic_goals: true
+      goals:
+      - g0
+      g0:
+        x: 3.99
+        y: 2.0
+        h: 3.14
+    person4:
+      id: 4
+      skin: 3
+      group_id: 2
+      max_vel: 0.5
+      radius: 0.4
+      behavior:
+        type: 1
+        configuration: 1
+        duration: 40.0
+        once: true
+        vel: 1.0
+        dist: 4.5
+        goal_force_factor: 2.0
+        obstacle_force_factor: 10.0
+        social_force_factor: 5.0
+        other_force_factor: 20.0
+      init_pose:
+        x: 3.0
+        y: 2.99
+        z: 1.25
+        h: -1.57
+      goal_radius: 0.3
+      cyclic_goals: true
+      goals:
+      - g0
+      g0:
+        x: 3.0
+        y: 2.99
+        h: -1.57
+    person5:
+      id: 5
+      skin: 4
+      group_id: 2
+      max_vel: 0.5
+      radius: 0.4
+      behavior:
+        type: 1
+        configuration: 1
+        duration: 40.0
+        once: true
+        vel: 1.0
+        dist: 4.5
+        goal_force_factor: 2.0
+        obstacle_force_factor: 10.0
+        social_force_factor: 5.0
+        other_force_factor: 20.0
+      init_pose:
+        x: 2.01
+        y: 2.0
+        z: 1.25
+        h: 0.0
+      goal_radius: 0.3
+      cyclic_goals: true
+      goals:
+      - g0
+      g0:
+        x: 2.01
+        y: 2.0
+        h: 0.0
+    person6:
+      id: 6
+      skin: 0
+      group_id: 2
+      max_vel: 0.5
+      radius: 0.4
+      behavior:
+        type: 1
+        configuration: 1
+        duration: 40.0
+        once: true
+        vel: 1.0
+        dist: 4.5
+        goal_force_factor: 2.0
+        obstacle_force_factor: 10.0
+        social_force_factor: 5.0
+        other_force_factor: 20.0
+      init_pose:
+        x: 3.0
+        y: 1.01
+        z: 1.25
+        h: 1.57
+      goal_radius: 0.3
+      cyclic_goals: true
+      goals:
+      - g0
+      g0:
+        x: 3.0
+        y: 1.01
+        h: 1.57
+    person7:
+      id: 7
+      skin: 1
+      group_id: 3
+      max_vel: 0.5
+      radius: 0.4
+      behavior:
+        type: 1
+        configuration: 1
+        duration: 40.0
+        once: true
+        vel: 1.0
+        dist: 4.5
+        goal_force_factor: 2.0
+        obstacle_force_factor: 10.0
+        social_force_factor: 5.0
+        other_force_factor: 20.0
+      init_pose:
+        x: 3.69
+        y: -3.0
+        z: 1.25
+        h: 3.14
+      goal_radius: 0.3
+      cyclic_goals: true
+      goals:
+      - g0
+      g0:
+        x: 3.69
+        y: -3.0
+        h: 3.14
+    person8:
+      id: 8
+      skin: 2
+      group_id: 3
+      max_vel: 0.5
+      radius: 0.4
+      behavior:
+        type: 1
+        configuration: 1
+        duration: 40.0
+        once: true
+        vel: 1.0
+        dist: 4.5
+        goal_force_factor: 2.0
+        obstacle_force_factor: 10.0
+        social_force_factor: 5.0
+        other_force_factor: 20.0
+      init_pose:
+        x: 2.65
+        y: -2.4
+        z: 1.25
+        h: -1.05
+      goal_radius: 0.3
+      cyclic_goals: true
+      goals:
+      - g0
+      g0:
+        x: 2.65
+        y: -2.4
+        h: -1.05
+    person9:
+      id: 9
+      skin: 3
+      group_id: 3
+      max_vel: 0.5
+      radius: 0.4
+      behavior:
+        type: 1
+        configuration: 1
+        duration: 40.0
+        once: true
+        vel: 1.0
+        dist: 4.5
+        goal_force_factor: 2.0
+        obstacle_force_factor: 10.0
+        social_force_factor: 5.0
+        other_force_factor: 20.0
+      init_pose:
+        x: 2.65
+        y: -3.6
+        z: 1.25
+        h: 1.05
+      goal_radius: 0.3
+      cyclic_goals: true
+      goals:
+      - g0
+      g0:
+        x: 2.65
+        y: -3.6
+        h: 1.05
+    person10:
+      id: 10
+      skin: 4
+      group_id: 4
+      max_vel: 0.5
+      radius: 0.4
+      behavior:
+        type: 1
+        configuration: 1
+        duration: 40.0
+        once: true
+        vel: 1.0
+        dist: 4.5
+        goal_force_factor: 2.0
+        obstacle_force_factor: 10.0
+        social_force_factor: 5.0
+        other_force_factor: 20.0
+      init_pose:
+        x: -0.96
+        y: 2.0
+        z: 1.25
+        h: 3.14
+      goal_radius: 0.3
+      cyclic_goals: true
+      goals:
+      - g0
+      g0:
+        x: -0.96
+        y: 2.0
+        h: 3.14
+    person11:
+      id: 11
+      skin: 0
+      group_id: 4
+      max_vel: 0.5
+      radius: 0.4
+      behavior:
+        type: 1
+        configuration: 1
+        duration: 40.0
+        once: true
+        vel: 1.0
+        dist: 4.5
+        goal_force_factor: 2.0
+        obstacle_force_factor: 10.0
+        social_force_factor: 5.0
+        other_force_factor: 20.0
+      init_pose:
+        x: -2.52
+        y: 2.9
+        z: 1.25
+        h: -1.05
+      goal_radius: 0.3
+      cyclic_goals: true
+      goals:
+      - g0
+      g0:
+        x: -2.52
+        y: 2.9
+        h: -1.05
+    person12:
+      id: 12
+      skin: 1
+      group_id: 4
+      max_vel: 0.5
+      radius: 0.4
+      behavior:
+        type: 1
+        configuration: 1
+        duration: 40.0
+        once: true
+        vel: 1.0
+        dist: 4.5
+        goal_force_factor: 2.0
+        obstacle_force_factor: 10.0
+        social_force_factor: 5.0
+        other_force_factor: 20.0
+      init_pose:
+        x: -2.52
+        y: 1.1
+        z: 1.25
+        h: 1.05
+      goal_radius: 0.3
+      cyclic_goals: true
+      goals:
+      - g0
+      g0:
+        x: -2.52
+        y: 1.1
+        h: 1.05

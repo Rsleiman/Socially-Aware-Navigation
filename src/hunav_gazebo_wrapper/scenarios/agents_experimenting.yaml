@@ -28,7 +28,7 @@ hunav_loader:
         y: 2.0
         z: 1.250000
         h: 1.0
-      goal_radius: 0.0
+      goal_radius: 0.3
       cyclic_goals: true
       goals: ["g0"]
       g0:
@@ -42,7 +42,7 @@ hunav_loader:
       max_vel: 0.5
       radius: 0.4
       behavior:
-        type: 2
+        type: 1
         configuration: 1
         duration: 40.0
         once: true

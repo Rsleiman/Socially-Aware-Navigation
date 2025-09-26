@@ -75,17 +75,17 @@ install(DIRECTORY launch/
 install(DIRECTORY worlds/
    DESTINATION share/${PROJECT_NAME}/worlds
 )
-
 install(DIRECTORY maps/
    DESTINATION share/${PROJECT_NAME}/maps
 )
-
 install(DIRECTORY scenarios/
    DESTINATION share/${PROJECT_NAME}/scenarios
 )
-
 install(DIRECTORY media/models
    DESTINATION share/${PROJECT_NAME}/
+)
+install(DIRECTORY config/
+   DESTINATION share/${PROJECT_NAME}/config
 )
 # install(DIRECTORY media/models/textures
 #    DESTINATION share/${PROJECT_NAME}/textures
