@@ -6,31 +6,30 @@ import torch.nn.functional as F
 from torch.distributions import Normal
 import numpy as np
 
-#TODO: Adapted to work with full observation space (4 * 240 laser + 2 position)
-
-
 class ConvLSTMA2CNetwork(nn.Module):
     """
     Advanced Actor-Critic Network with Conv1D + LSTM for Social Navigation
     
     Architecture:
-    - Input: 962-dimensional observation (4*240 fused array + 2 position) 
-    - Conv1D layers process each observation type (agents, obstacles, groups, goals) separately
+    - Input: 726-dimensional observation (3*240 fused array + 4 goal features + 2 position)
+    - Conv1D layers process each observation type (agents, obstacles, groups) separately
     - LSTM processes conv outputs combined with position data
     - FC layers output actor and critic values
     """
     
-    def __init__(self, obs_dim=962, fused_array_dim=960, action_dim=3, lstm_hidden=64):
+    def __init__(self, obs_dim=726, fused_array_dim=720, action_dim=3, lstm_hidden=64):
         super(ConvLSTMA2CNetwork, self).__init__()
         
         self.obs_dim = obs_dim
         self.fused_array_dim = fused_array_dim
-        self.position_dim = obs_dim - fused_array_dim  # Should be 2 (x, y)
+        self.extra_dim = obs_dim - fused_array_dim  # Goal features + global position
         self.action_dim = action_dim
         self.lstm_hidden = lstm_hidden
         
-        self.rays_per_type = 240
-        self.num_observation_types = 4  # agents, obstacles, group_ids, goals
+        self.num_observation_types = 3  # agents, obstacles, group_ids
+        if self.fused_array_dim % self.num_observation_types != 0:
+            raise ValueError("Fused array dimension must be divisible by number of observation types")
+        self.rays_per_type = self.fused_array_dim // self.num_observation_types
         
         self.conv_layers = nn.Sequential(
             nn.Conv1d(in_channels=self.num_observation_types, out_channels=32, kernel_size=7, stride=2),
@@ -45,7 +44,7 @@ class ConvLSTMA2CNetwork(nn.Module):
         conv_output_size = self.get_conv_output_size()
         
         # LSTM layer (processes conv output + position data)
-        lstm_input_size = conv_output_size + self.position_dim
+        lstm_input_size = conv_output_size + self.extra_dim
         self.lstm = nn.LSTM(input_size=lstm_input_size, hidden_size=lstm_hidden, batch_first=True)
         
         # Fully connected layers
@@ -65,8 +64,8 @@ class ConvLSTMA2CNetwork(nn.Module):
         
         self.initialise_weights()
 
-    def get_conv_output_size(self): # In case we change architecture
-        # Simulate forward pass through conv layers with 4 observation types
+    def get_conv_output_size(self):
+        # Simulate forward pass through conv layers with current observation types
         with torch.no_grad():
             dummy_input = torch.randn(1, self.num_observation_types, self.rays_per_type)
             conv_output = self.conv_layers(dummy_input)
@@ -103,13 +102,13 @@ class ConvLSTMA2CNetwork(nn.Module):
         if reset_hidden or self.hidden_state is None:
             self.reset_hidden_states(batch_size)
         
-        # Split observation into fused array data and position
-        fused_array_data = observations[:, :self.fused_array_dim]  # Shape: [batch, 960]
-        position_data = observations[:, self.fused_array_dim:]  # Shape: [batch, 2]
-        
-        # Reshape fused array into 4 channels for conv processing
-        fused_reshaped = fused_array_data.view(batch_size, self.num_observation_types, self.rays_per_type)  # Shape: [batch, 4, 240]
-        
+        # Split observation into fused array data and additional features
+        fused_array_data = observations[:, :self.fused_array_dim]
+        position_data = observations[:, self.fused_array_dim:]
+
+        # Reshape fused array into channels for conv processing
+        fused_reshaped = fused_array_data.view(batch_size, self.num_observation_types, self.rays_per_type)
+
         # Process layers
         conv_output = self.conv_layers(fused_reshaped)  # Shape: [batch, 64, conv_seq_len]
         
@@ -161,7 +160,7 @@ class ConvLSTMA2CNetwork(nn.Module):
 
 
 class A2CAgent:    
-    def __init__(self, obs_dim=962, action_dim=3, learning_rate=3e-4, device='cpu'):
+    def __init__(self, obs_dim=726, action_dim=3, learning_rate=3e-4, device='cpu'):
         self.device = torch.device(device)
         
         self.network = ConvLSTMA2CNetwork(obs_dim, action_dim=action_dim).to(self.device)

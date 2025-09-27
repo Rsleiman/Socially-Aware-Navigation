@@ -45,7 +45,7 @@ class A2CTrainer:
         
         print("Initialising agent...")
         self.agent = A2CAgent(
-            obs_dim=962,  
+            obs_dim=726,
             action_dim=3, 
             learning_rate=config.get('learning_rate', 3e-4),
             device=self.device,

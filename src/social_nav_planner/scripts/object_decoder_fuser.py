@@ -6,14 +6,11 @@ from rclpy.qos import QoSProfile, ReliabilityPolicy, HistoryPolicy
 from rclpy.time import Time
 
 import numpy as np
-import time
 from typing import Optional
 
 from std_msgs.msg import Float32MultiArray, Int16MultiArray
-from geometry_msgs.msg import PoseStamped
-from rclpy.time import Time
 
-#TODO: Add functionality to handle goal
+#TODO: Revisit if goal-relative data needs to be republished alongside fused arrays
 
 ## CLI debugger:
 """
@@ -23,8 +20,6 @@ echo "Obstacle Distances:" &&
 ros2 topic echo /social_observation/obstacle_distances --once --field data &&
 echo "Agent Group IDs:" &&
 ros2 topic echo /social_observation/agent_group_ids --once --field data &&
-echo "Goal Distances:" &&
-ros2 topic echo /social_observation/goal_distances --once --field data &&
 echo "Fused Object Array:" &&
 ros2 topic echo /social_observation/fused_object_array --once --field data
 """
@@ -55,15 +50,13 @@ class ObjectDecoderFuser(Node):
         self.latest_agent_distances: Optional[TimestampedArray] = None
         self.latest_obstacle_distances: Optional[TimestampedArray] = None
         self.latest_agent_group_ids: Optional[TimestampedArray] = None
-        self.latest_goal_distances: Optional[TimestampedArray] = None
 
         self.occluded_agent_distances = np.full(self.num_rays, -1.0, dtype=np.float32)
         self.occluded_obstacle_distances = np.full(self.num_rays, -1.0, dtype=np.float32)
         self.occluded_agent_group_ids = np.full(self.num_rays, -1, dtype=np.int32)
-        self.goal_distances = np.full(self.num_rays, -1.0, dtype=np.float32)
     
         # Initialise combined message object
-        # Flattened format: [agent_0, ..., agent_239, obstacle_0, ..., obstacle_239, group_id_0, ..., group_id_239, goal_distance_0, ..., goal_distance_239]
+        # Flattened format: [agent_0, ..., agent_239, obstacle_0, ..., obstacle_239, group_id_0, ..., group_id_239]
         self.combined_msg = Float32MultiArray()
         
         # QoS Profile
@@ -101,13 +94,6 @@ class ObjectDecoderFuser(Node):
         #     qos
         # )
 
-        self.goal_distances_sub = self.create_subscription(
-            Float32MultiArray,
-            '/social_observation/goal_distances',
-            self.goal_distances_callback,
-            qos
-        )
-
         # Publishers
         #TODO: Should publish occlusion filtered individual arrays separately? Leaning towards no
         # self.fused_agents_pub = self.create_publisher(
@@ -140,7 +126,7 @@ class ObjectDecoderFuser(Node):
         self.get_logger().info('  - Output topics:')
         self.get_logger().info('    * /social_observation/occluded_agent_distances')
         self.get_logger().info('    * /social_observation/occluded_obstacle_distances') 
-        self.get_logger().info('    * /social_observation/fused_object_array (2x240 array)')
+        self.get_logger().info('    * /social_observation/fused_object_array (3x240 array)')
 
 
     def agents_callback(self, msg):
@@ -167,21 +153,12 @@ class ObjectDecoderFuser(Node):
         else:
             self.get_logger().warn(f'Agent Group IDs array size mismatch: expected {self.num_rays}, got {len(msg.data)}')
 
-    def goal_distances_callback(self, msg):
-        if len(msg.data) == self.num_rays:
-            self.latest_goal_distances = TimestampedArray(
-                np.array(msg.data, dtype=np.float32), self.get_clock().now()
-            )
-        else:
-            self.get_logger().warn(f'Goal distances array size mismatch: expected {self.num_rays}, got {len(msg.data)}')
-
     # Check if input arrays are time synchronised
     def arrays_synchronised(self) -> bool:
-        # Ensure all 4 data sources are available
+        # Ensure all 3 data sources are available
         if (self.latest_agent_distances is None or
             self.latest_obstacle_distances is None or
-            self.latest_agent_group_ids is None or
-            self.latest_goal_distances is None):
+            self.latest_agent_group_ids is None):
             # self.get_logger().warn("Waiting for all input arrays to be available...")
             return False
         
@@ -189,19 +166,13 @@ class ObjectDecoderFuser(Node):
         time_diffs = [
             abs((self.latest_agent_distances.timestamp - self.latest_obstacle_distances.timestamp).nanoseconds * 1e-9),
             abs((self.latest_agent_distances.timestamp - self.latest_agent_group_ids.timestamp).nanoseconds * 1e-9),
-            abs((self.latest_obstacle_distances.timestamp - self.latest_agent_group_ids.timestamp).nanoseconds * 1e-9),
-            abs((self.latest_goal_distances.timestamp - self.latest_agent_distances.timestamp).nanoseconds * 1e-9),
-            abs((self.latest_goal_distances.timestamp - self.latest_obstacle_distances.timestamp).nanoseconds * 1e-9),
-            abs((self.latest_goal_distances.timestamp - self.latest_agent_group_ids.timestamp).nanoseconds * 1e-9)
+            abs((self.latest_obstacle_distances.timestamp - self.latest_agent_group_ids.timestamp).nanoseconds * 1e-9)
         ]
 
         time_diff_labels = [
             "agent vs obstacle",
             "agent vs group_id",
-            "obstacle vs group_id",
-            "goal vs agent",
-            "goal vs obstacle",
-            "goal vs group_id"
+            "obstacle vs group_id"
         ]
         highest_time_diff = max(time_diffs)
 
@@ -236,7 +207,6 @@ class ObjectDecoderFuser(Node):
         agent_distances = self.latest_agent_distances.data
         obstacle_distances = self.latest_obstacle_distances.data
         agent_group_ids = self.latest_agent_group_ids.data
-        goal_distances = self.latest_goal_distances.data
 
         
         # Create masks for valid detections (>= 0)
@@ -269,9 +239,6 @@ class ObjectDecoderFuser(Node):
             # self.get_logger().info("Only obstacles present")
             self.occluded_obstacle_distances[only_obstacles] = obstacle_distances[only_obstacles]
 
-        # Process goal distances
-        np.copyto(self.goal_distances, goal_distances, casting='unsafe')
-
         # Publish the fused arrays (no occlusion needed)
         self.publish_arrays()
 
@@ -283,8 +250,7 @@ class ObjectDecoderFuser(Node):
             [
                 self.occluded_agent_distances,
                 self.occluded_obstacle_distances,
-                self.occluded_agent_group_ids,
-                self.goal_distances
+                self.occluded_agent_group_ids
             ]
         )
         self.combined_msg.data = combined_data.tolist()
