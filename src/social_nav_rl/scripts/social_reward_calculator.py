@@ -56,7 +56,7 @@ class SocialRewardCalculator:
         # Proximity thresholds
         self.personal_space_radius = 1.2  
         self.obstacle_proximity_radius = 0.7  
-        self.goal_arrival_threshold = 0.35  
+        self.goal_arrival_threshold = 0.5 
         
         # Reward weights and penalties
         self.human_collision_penalty = -200.0  
@@ -331,7 +331,13 @@ class SocialRewardCalculator:
                     self.log_warn(f"Ignoring unrealistic distance change: {distance_change:.3f}m (likely teleportation)")
                 else:
                     # Positive reward for getting closer, negative for getting further
-                    total_progress_reward = distance_change * self.progress_reward_scale
+                    progress_scale = self.progress_reward_scale
+                    
+                    # Scale up rewards when close to goal (within 1.5m)
+                    if current_goal_distance <= 1.5:
+                        progress_scale *= 2.0
+                    
+                    total_progress_reward = distance_change * progress_scale
                     # Spread over set number of future ticks
                     self.progress_reward_per_tick = total_progress_reward / self.progress_tick_total
                     self.progress_ticks_remaining = self.progress_tick_total
