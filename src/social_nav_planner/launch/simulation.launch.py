@@ -181,7 +181,10 @@ def generate_launch_description():
                 LogInfo(msg="GenerateWorld started, launching Gazebo after 2 seconds..."),
                 TimerAction(
                     period=2.0,
-                    actions=[gzserver_process, gzclient_process],
+                    actions=[
+                        gzserver_process,
+                        # gzclient_process # Run headless for faster training
+                    ],
                 )
             ]
         )

@@ -102,12 +102,12 @@ class A2CTrainer:
         episode_reward_components = {'r_ro': 0, 'r_rh': 0, 'r_rs': 0, 'r_rg': 0, 'r_rf': 0}
         
         for step in range(self.rollout_steps):
-            
-            # Get action and value
-            action = self.agent.predict(obs, deterministic=False, action_space=self.env.action_space)
-            value = self.agent.network.get_value(
-                torch.FloatTensor(obs).unsqueeze(0).to(self.device)
-            ).item()
+            # Get action and critic value using a single forward pass to keep LSTM state aligned
+            action, value = self.agent.predict(
+                obs,
+                deterministic=False,
+                action_space=self.env.action_space
+            )
             
             # Store current experience
             observations.append(obs.copy())
@@ -223,7 +223,12 @@ class A2CTrainer:
             
             while episode_length < 500:
                 # Get deterministic actions for evaluation
-                action = self.agent.predict(obs, deterministic=True, action_space=self.env.action_space)
+                action, _ = self.agent.predict(
+                    obs,
+                    deterministic=True,
+                    action_space=self.env.action_space
+                )
+
                 obs, reward, terminated, truncated, info = self.env.step(action)
                 
                 episode_reward += reward

@@ -72,19 +72,19 @@ class GroundTruthAMCL(Node):
         self.tf_broadcaster.sendTransform(transform)
         # self.get_logger().info(f"Published map->odom transform")
 
-        # Log occasionally for debugging
-        if hasattr(self, "_log_counter"):
-            self._log_counter += 1
-        else:
-            self._log_counter = 0
+        # # Log occasionally for debugging
+        # if hasattr(self, "_log_counter"):
+        #     self._log_counter += 1
+        # else:
+        #     self._log_counter = 0
             
-        if self._log_counter % 100 == 0:  # Log every 100 messages
-            # Simple quaternion to yaw conversion
-            q = msg.pose.pose.orientation
-            yaw = math.atan2(2.0 * (q.w * q.z + q.x * q.y), 1.0 - 2.0 * (q.y * q.y + q.z * q.z))
-            self.get_logger().info(f"Published ground truth pose: x={msg.pose.pose.position.x:.2f}, "
-                                 f"y={msg.pose.pose.position.y:.2f}, "
-                                 f"yaw={yaw:.2f}")
+        # if self._log_counter % 100 == 0:  # Log every 100 messages
+        #     # Simple quaternion to yaw conversion
+        #     q = msg.pose.pose.orientation
+        #     yaw = math.atan2(2.0 * (q.w * q.z + q.x * q.y), 1.0 - 2.0 * (q.y * q.y + q.z * q.z))
+        #     self.get_logger().info(f"Published ground truth pose: x={msg.pose.pose.position.x:.2f}, "
+        #                          f"y={msg.pose.pose.position.y:.2f}, "
+        #                          f"yaw={yaw:.2f}")
 
 
 

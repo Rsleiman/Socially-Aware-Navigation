@@ -64,9 +64,9 @@ class SocialRewardCalculator:
         self.personal_space_penalty = -0.5  
         self.obstacle_space_penalty = -0.5  
         self.robot_flipped_penalty = -200.0 
-        self.arrival_bonus = 200.0       # Large bonus for reaching goal
-        self.progress_reward_scale = 40  # For goal progress reward
-        self.core_group_penalty = -3.0  # Penalty for entering core group area
+        self.arrival_bonus = 500.0       # Large bonus for reaching goal
+        self.progress_reward_scale = 100  # For goal progress reward
+        self.core_group_penalty = -2.0  # Penalty for entering core group area
         
         # State tracking for goal progress
         self.previous_goal_distance = None

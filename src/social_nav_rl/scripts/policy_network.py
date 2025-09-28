@@ -95,11 +95,14 @@ class ConvLSTMA2CNetwork(nn.Module):
         self.hidden_state = torch.zeros(1, batch_size, self.lstm_hidden, device=device)
         self.cell_state = torch.zeros(1, batch_size, self.lstm_hidden, device=device)
         
-    def forward(self, observations, reset_hidden=False):
+    def forward(self, observations):
+        """
+        Forward passes through the network to get action distributions and state value.
+        """
         batch_size = observations.size(0)
         
         # Reset  if requested or if first time
-        if reset_hidden or self.hidden_state is None:
+        if self.hidden_state is None:
             self.reset_hidden_states(batch_size)
         
         # Split observation into fused array data and additional features
@@ -134,14 +137,14 @@ class ConvLSTMA2CNetwork(nn.Module):
         action_log_std = self.actor_log_std.expand_as(action_mean)
         action_std = torch.exp(action_log_std)
         
-        # Critic output (state value)
+        # Critic output (state value) -> [batch, 1]
         state_value = self.critic(features)
         
         return action_mean, action_std, state_value
-    
-    def get_action_and_value(self, observations, action=None, reset_hidden=False):       
-        action_mean, action_std, state_value = self.forward(observations, reset_hidden)
-        
+
+    def get_action_and_value(self, observations, action=None):
+        action_mean, action_std, state_value = self.forward(observations)
+
         # Create action distribution
         action_dist = Normal(action_mean, action_std)
         
@@ -153,18 +156,18 @@ class ConvLSTMA2CNetwork(nn.Module):
         action_log_prob = action_dist.log_prob(action).sum(dim=-1)
         
         return action, action_log_prob, action_dist.entropy().sum(dim=-1), state_value.squeeze(-1)
-    
-    def get_value(self, observations, reset_hidden=False):
-        _, _, state_value = self.forward(observations, reset_hidden)
+
+    def get_value(self, observations):
+        _, _, state_value = self.forward(observations)
         return state_value.squeeze(-1)
 
 
 class A2CAgent:    
     def __init__(self, obs_dim=726, action_dim=3, learning_rate=3e-4, device='cpu'):
         self.device = torch.device(device)
-        
-        self.network = ConvLSTMA2CNetwork(obs_dim, action_dim=action_dim).to(self.device)
-        
+
+        self.network : ConvLSTMA2CNetwork = ConvLSTMA2CNetwork(obs_dim, action_dim=action_dim).to(self.device)
+
         # Optimiser
         self.optimiser = torch.optim.Adam(self.network.parameters(), lr=learning_rate)
         
@@ -174,29 +177,35 @@ class A2CAgent:
         self.clip_grad_norm = 0.5  # Gradient clipping
         self.value_loss_coef = 0.5  # Value loss coefficient
         self.entropy_coef = 0.01  # Entropy bonus coefficient
-        
-    def predict(self, observation, deterministic=False, action_space=None, reset_hidden=False):
-        """Predict action given observation"""
-        self.network.eval()
-        
+
+    def predict(self, observation, deterministic=False, action_space=None):
+        self.network.eval()  # Set to eval mode for sampling actions
+
         with torch.no_grad():
             obs_tensor = torch.FloatTensor(observation).unsqueeze(0).to(self.device)
-            
+
             if deterministic:
-                action_mean, _, _ = self.network.forward(obs_tensor, reset_hidden)
-                action = torch.tanh(action_mean)  # Bound actions to [-1, 1]
+                action_mean, _, value_tensor = self.network.forward(obs_tensor)
+                action_tensor = torch.tanh(action_mean)
             else:
-                action, _, _, _ = self.network.get_action_and_value(obs_tensor, reset_hidden=reset_hidden)
-                action = torch.tanh(action)  # Bound actions to [-1, 1]
-        
-        # Scale actions from [-1, 1] to actual action space bounds
+                action_tensor, _, _, value_tensor = self.network.get_action_and_value(
+                    obs_tensor
+                )
+                action_tensor = torch.tanh(action_tensor)
+
+            value_scalar = value_tensor.squeeze(-1).item()
+
+        # Scale actions from [-1, 1] to actual action space bounds [action_space.low, action_space.high]
         if action_space is not None:
-            action_np = action.cpu().numpy().flatten()
-            # Scale from [-1, 1] to [action_space.low, action_space.high]
+            action_np = action_tensor.cpu().numpy().flatten()
             scaled_action = action_space.low + (action_np + 1.0) * 0.5 * (action_space.high - action_space.low)
-            return scaled_action
+            action_output = scaled_action
         else:
-            return action.cpu().numpy().flatten()
+            action_output = action_tensor.cpu().numpy().flatten()
+
+
+        return action_output, value_scalar
+
 
     # Generalised Advantage Estimation (GAE)    
     def compute_gae(self, rewards, values, dones, next_value):
@@ -237,7 +246,7 @@ class A2CAgent:
         
         #  next value needed for GAE calculation
         with torch.no_grad():
-            next_value = self.network.get_value(obs_tensor[-1:], reset_hidden=False)
+            next_value = self.network.get_value(obs_tensor[-1:])
 
         # Compute advantages and returns
         advantages, returns = self.compute_gae(rewards_tensor, old_values_tensor, dones_tensor, next_value)
@@ -254,7 +263,7 @@ class A2CAgent:
         
         for i in range(obs_tensor.size(0)):
             _, log_prob, entropy, value = self.network.get_action_and_value(
-                obs_tensor[i:i+1], actions_tensor[i:i+1], reset_hidden=False
+                obs_tensor[i:i+1], actions_tensor[i:i+1]
             )
             all_log_probs.append(log_prob)
             all_entropy.append(entropy)

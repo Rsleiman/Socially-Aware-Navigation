@@ -36,17 +36,21 @@ class SocialNavEnvironment(gym.Env, Node):
         gym.Env.__init__(self)
         Node.__init__(self, node_name)
         
-        # Environment parameters
+        # Observation parameters
         self.num_rays = 240  
         self.num_observation_types = 3  # Agent distances, obstacle distances, group IDs
         self.fused_object_array_size = self.num_rays * self.num_observation_types  # 720
-        self.max_episode_steps = 1000
-        self.current_step = 0
-        self.robot_name = robot_name
-        self.xy_limit = 5.0
         self.goal_feature_dim = 4  # relative_x, relative_y, distance, heading
         self.position_dim = 2  # global x, y (normalised)
         self.additional_feature_dim = self.goal_feature_dim + self.position_dim
+
+        # Episode parameters
+        self.max_episode_steps = 1000
+        self.current_step = 0
+        self.robot_name = robot_name
+
+        # environment size params
+        self.xy_limit = 5.0 # TODO: TEMP.
         environment_span = 2 * self.xy_limit
         environment_diagonal = np.sqrt(2) * environment_span
         self.max_goal_distance = max(environment_diagonal, 1e-3)
@@ -380,6 +384,13 @@ class SocialNavEnvironment(gym.Env, Node):
             [rel_x_norm, rel_y_norm, distance_norm, heading_norm],
             dtype=np.float32
         )
+        # # Log every 100 steps
+        # if self.current_step % 10 == 0:
+        #     self.get_logger().info(
+        #         f"Goal features: rel_x={rel_x_robot:.3f}, rel_y={rel_y_robot:.3f}, "
+        #         f"distance={distance:.3f}, heading={heading:.3f}"
+        #     )
+
         return self.latest_goal_features
 
     def get_robot_yaw(self) -> Optional[float]:
