@@ -146,16 +146,21 @@ class ConvLSTMA2CNetwork(nn.Module):
         action_mean, action_std, state_value = self.forward(observations)
 
         # Create action distribution
-        action_dist = Normal(action_mean, action_std)
-        
+        normal_dist = Normal(action_mean, action_std)
+        eps = 1e-6
+
         if action is None:
-            # Sample action for exploration
-            action = action_dist.sample()
-        
-        # Compute log probability of the action
-        action_log_prob = action_dist.log_prob(action).sum(dim=-1)
-        
-        return action, action_log_prob, action_dist.entropy().sum(dim=-1), state_value.squeeze(-1)
+            pre_tanh_action = normal_dist.rsample()
+            squashed_action = torch.tanh(pre_tanh_action)
+        else:
+            squashed_action = torch.clamp(action, -1.0 + eps, 1.0 - eps)
+            pre_tanh_action = torch.atanh(squashed_action.clamp(-1+eps,1-eps))
+
+        log_prob = normal_dist.log_prob(pre_tanh_action) - torch.log(1 - squashed_action.pow(2) + eps)
+        log_prob = log_prob.sum(dim=-1)
+        entropy = normal_dist.entropy().sum(dim=-1)
+
+        return squashed_action, log_prob, entropy, state_value.squeeze(-1)
 
     def get_value(self, observations):
         _, _, state_value = self.forward(observations)
@@ -183,6 +188,7 @@ class A2CAgent:
 
         with torch.no_grad():
             obs_tensor = torch.FloatTensor(observation).unsqueeze(0).to(self.device)
+            eps = 1e-6
 
             if deterministic:
                 action_mean, _, value_tensor = self.network.forward(obs_tensor)
@@ -191,7 +197,8 @@ class A2CAgent:
                 action_tensor, _, _, value_tensor = self.network.get_action_and_value(
                     obs_tensor
                 )
-                action_tensor = torch.tanh(action_tensor)
+
+            action_tensor = torch.clamp(action_tensor, -1.0 + eps, 1.0 - eps)
 
             value_scalar = value_tensor.squeeze(-1).item()
 
@@ -239,10 +246,13 @@ class A2CAgent:
             actions_tensor = torch.FloatTensor(scaled_actions).to(self.device)
         else:
             actions_tensor = torch.FloatTensor(actions).to(self.device)
+        eps = 1e-6
+        actions_tensor = torch.clamp(actions_tensor, -1.0 + eps, 1.0 - eps)
             
         rewards_tensor = torch.FloatTensor(rewards).to(self.device)
         dones_tensor = torch.FloatTensor(dones).to(self.device)
         old_values_tensor = torch.FloatTensor(values).to(self.device)
+        done_flags = dones_tensor.detach().cpu().numpy()
         
         #  next value needed for GAE calculation
         with torch.no_grad():
@@ -262,6 +272,8 @@ class A2CAgent:
         self.network.reset_hidden_states(1)
         
         for i in range(obs_tensor.size(0)):
+            if i > 0 and done_flags[i-1] > 0.5:
+                self.network.reset_hidden_states(1)
             _, log_prob, entropy, value = self.network.get_action_and_value(
                 obs_tensor[i:i+1], actions_tensor[i:i+1]
             )
@@ -289,6 +301,9 @@ class A2CAgent:
         torch.nn.utils.clip_grad_norm_(self.network.parameters(), self.clip_grad_norm)
         
         self.optimiser.step()
+
+        # Ensure actor uses a clean hidden state for the next rollout collection
+        self.reset_lstm_states()
         
         return {
             'total_loss': total_loss.item(),

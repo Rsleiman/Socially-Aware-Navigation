@@ -107,33 +107,21 @@
       </camera>
     </gui>
 
-    <include>
-      <name>table1</name>
-      <pose>2.0 -1.2 0.05 0 0 0</pose>
-      <uri>model://cafe_table</uri>
-    </include>
-
-    <include>
-      <name>table2</name>
-      <pose>-3.15 -3.45 0.05 0 0 0</pose>
-      <uri>model://cafe_table</uri>
-    </include>
-
     <model name='wall_north'>
       <static>1</static>
-      <pose>0 5 1 0 0 0</pose>
+      <pose>0 10 1 0 0 0</pose>
       <link name='link'>
         <collision name='collision'>
           <geometry>
             <box>
-              <size>10 0.2 2</size>
+              <size>20 0.2 2</size>
             </box>
           </geometry>
         </collision>
         <visual name='visual'>
           <geometry>
             <box>
-              <size>10 0.2 2</size>
+              <size>20 0.2 2</size>
             </box>
           </geometry>
           <material>
@@ -148,19 +136,19 @@
 
     <model name='wall_south'>
       <static>1</static>
-      <pose>0 -5 1 0 0 0</pose>
+      <pose>0 -10 1 0 0 0</pose>
       <link name='link'>
         <collision name='collision'>
           <geometry>
             <box>
-              <size>10 0.2 2</size>
+              <size>20 0.2 2</size>
             </box>
           </geometry>
         </collision>
         <visual name='visual'>
           <geometry>
             <box>
-              <size>10 0.2 2</size>
+              <size>20 0.2 2</size>
             </box>
           </geometry>
           <material>
@@ -175,19 +163,19 @@
 
     <model name='wall_east'>
       <static>1</static>
-      <pose>5 0 1 0 0 0</pose>
+      <pose>10 0 1 0 0 0</pose>
       <link name='link'>
         <collision name='collision'>
           <geometry>
             <box>
-              <size>0.2 10 2</size>
+              <size>0.2 20 2</size>
             </box>
           </geometry>
         </collision>
         <visual name='visual'>
           <geometry>
             <box>
-              <size>0.2 10 2</size>
+              <size>0.2 20 2</size>
             </box>
           </geometry>
           <material>
@@ -202,19 +190,19 @@
 
     <model name='wall_west'>
       <static>1</static>
-      <pose>-5 0 1 0 0 0</pose>
+      <pose>-10 0 1 0 0 0</pose>
       <link name='link'>
         <collision name='collision'>
           <geometry>
             <box>
-              <size>0.2 10 2</size>
+              <size>0.2 20 2</size>
             </box>
           </geometry>
         </collision>
         <visual name='visual'>
           <geometry>
             <box>
-              <size>0.2 10 2</size>
+              <size>0.2 20 2</size>
             </box>
           </geometry>
           <material>

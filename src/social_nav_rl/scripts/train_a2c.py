@@ -1,6 +1,10 @@
 #!/usr/bin/env python3
 
+import argparse
+import sys
+
 import rclpy
+from rclpy.utilities import remove_ros_args
 import numpy as np
 import torch
 import time
@@ -21,7 +25,7 @@ class A2CTrainer:
         
         # Training parameters
         self.total_timesteps = config.get('total_timesteps', 100000)
-        self.rollout_steps = config.get('rollout_steps', 128)  # Steps per rollout
+        self.rollout_steps = config.get('rollout_steps', 64)  # Steps per rollout
         self.eval_episodes = config.get('eval_episodes', 5)
         self.eval_freq = config.get('eval_freq', 1000) 
         self.save_freq = config.get('save_freq', 5000)  
@@ -35,18 +39,22 @@ class A2CTrainer:
         os.makedirs(self.log_dir, exist_ok=True)
         os.makedirs(self.model_dir, exist_ok=True)
         
+        # Action configuration
+        self.action_mode = config.get('action_mode', 'holonomic')
+
         # Device
         self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
         print(f"Using device: {self.device}")
+        print(f"Action mode: {self.action_mode}")
         
         # Initialise environment and agent
         print("Initialising environment...")
-        self.env = SocialNavEnvironment()
+        self.env = SocialNavEnvironment(action_mode=self.action_mode)
         
         print("Initialising agent...")
         self.agent = A2CAgent(
             obs_dim=726,
-            action_dim=3, 
+            action_dim=self.env.action_space.shape[0], 
             learning_rate=config.get('learning_rate', 3e-4),
             device=self.device,
         )
@@ -71,7 +79,8 @@ class A2CTrainer:
             self.monitor = None
         
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        self.run_name = f"a2c_holo_{timestamp}"
+        mode_suffix = 'holo' if self.action_mode == 'holonomic' else 'nonholo'
+        self.run_name = f"a2c_{mode_suffix}_{timestamp}"
         
         print(f"Trainer initialised: {self.run_name}")
         print(f"Total timesteps: {self.total_timesteps}")
@@ -133,10 +142,11 @@ class A2CTrainer:
             
             # Simplified step logging - only every 50 steps during rollout
             if step % 50 == 0:
+                action_str = ", ".join(f"{a:.2f}" for a in action)
                 self.env.get_logger().info(
                     f"Rollout {step}/{self.rollout_steps}: reward={reward:.2f}, "
                     f"episode_total={episode_accumulated_reward:.1f}, "
-                    f"action=[{action[0]:.2f}, {action[1]:.2f}, {action[2]:.2f}]"
+                    f"action=[{action_str}]"
                 )
             
             # Handle episode end
@@ -329,9 +339,6 @@ class A2CTrainer:
                 mean_reward = np.mean(self.episode_rewards)
                 mean_length = np.mean(self.episode_lengths)
                 
-                # Calculate success rate from recent episodes
-                recent_episodes = min(20, len(self.episode_rewards))
-                
                 self.env.get_logger().info(
                     f"Progress: Step {self.global_step}/{self.total_timesteps} | "
                     f"Episodes: {self.episode_count} | "
@@ -374,20 +381,30 @@ class A2CTrainer:
         )
         
         return final_eval
-
-
 def main():  
-    # Initialise ROS2
-    rclpy.init()
-    
+    argv = sys.argv
+    parser = argparse.ArgumentParser(description="Train A2C agent for social navigation")
+    parser.add_argument(
+        "--action-mode",
+        choices=['holonomic', 'nonholonomic'],
+        default='holonomic',
+        help="Select holonomic (linear.x, linear.y, angular.z) or nonholonomic (linear.x, angular.z) actions"
+    )
+
+    parsed_args = parser.parse_args(remove_ros_args(argv)[1:])
+
+    # Initialise ROS2 with full argument list so log-level and other ROS args are honoured
+    rclpy.init(args=argv)
+
     # Training configuration
     config = {
-    'total_timesteps': 500000,
-    'rollout_steps': 128,
-    'learning_rate': 1e-4,
-    'eval_episodes': 3,
-    'eval_freq': 2500,
-    'save_freq': 5000,
+        'total_timesteps': 500000,
+        'rollout_steps': 128,
+        'learning_rate': 1e-4,
+        'eval_episodes': 3,
+        'eval_freq': 2500,
+        'save_freq': 5000,
+        'action_mode': parsed_args.action_mode,
     }
     
     try:

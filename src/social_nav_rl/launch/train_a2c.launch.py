@@ -34,12 +34,19 @@ def generate_launch_description():
         default_value="3e-4",
         description="Learning rate for training"
     )
+
+    declare_action_mode = DeclareLaunchArgument(
+        "action_mode",
+        default_value="holonomic",
+        description="Select holonomic or nonholonomic action space for training"
+    )
     
     # Get launch configurations
     environment_name = LaunchConfiguration("environment_name")
     agent_config_file = LaunchConfiguration("configuration_file")
     total_timesteps = LaunchConfiguration("total_timesteps")
     learning_rate = LaunchConfiguration("learning_rate")
+    action_mode = LaunchConfiguration("action_mode")
 
     # Map file for navigation components
     map_yaml_file = PathJoinSubstitution([
@@ -128,7 +135,7 @@ def generate_launch_description():
             "learning_rate": learning_rate,
             "use_sim_time": True
         }],
-        arguments=["--ros-args", "--log-level", "INFO"]
+        arguments=["--action-mode", action_mode, "--ros-args", "--log-level", "INFO"]
     )
     
     # Gazebo Monitor node. Automatically unpauses Gazebo if it gets stuck
@@ -156,6 +163,7 @@ def generate_launch_description():
         declare_agent_config_file,
         declare_total_timesteps,
         declare_learning_rate,
+        declare_action_mode,
         
         simulation_launch,
         nav2_minimal_launch,
