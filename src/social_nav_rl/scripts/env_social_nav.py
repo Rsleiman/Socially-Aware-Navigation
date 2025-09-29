@@ -27,12 +27,11 @@ from social_reward_calculator import SocialRewardCalculator
 class SocialNavEnvironment(gym.Env, Node):
     """
     A2C Social Navigation Environment for Unitree Go2
-    #TODO: Create holonomic vs non-holonomic action space
     Observation Space: Fused laser-like data from multiple sensors
-    Action Space: Continuous control commands for robot movement
+    Action Space: Continuous control commands for robot movement (holonomic or non-holonomic)
     """
     
-    def __init__(self, node_name='social_nav_env', robot_name='go2'):
+    def __init__(self, node_name='social_nav_env', robot_name='go2', action_mode: str = 'holonomic'):
         gym.Env.__init__(self)
         Node.__init__(self, node_name)
         
@@ -58,14 +57,28 @@ class SocialNavEnvironment(gym.Env, Node):
 
         # Action repeat so actions can have more significance
         self.action_repeat = 3
-        
-        # Action space: [linear_x, linear_y, angular_z] (holonomic)
-        # from gait.yaml: x [-0.5, 0.8], y [-0.6, 0.6], z [-0.8, 0.8]
-        self.action_space = spaces.Box(
-            low=np.array([-0.5, -0.6, -0.8]),   
-            high=np.array([0.8, 0.6, 0.8]),  
-            dtype=np.float32
-        )
+
+        # Action space configuration
+        valid_action_modes = {'holonomic', 'nonholonomic'}
+        if action_mode not in valid_action_modes:
+            raise ValueError(f"action_mode must be one of {valid_action_modes}, got '{action_mode}'")
+        self.action_mode = action_mode
+
+        if self.action_mode == 'holonomic':
+            # [linear_x, linear_y, angular_z]
+            # from gait.yaml: x [-0.5, 0.8], y [-0.6, 0.6], z [-0.8, 0.8]
+            self.action_space = spaces.Box(
+                low=np.array([-0.5, -0.6, -0.8], dtype=np.float32),
+                high=np.array([0.8, 0.6, 0.8], dtype=np.float32),
+                dtype=np.float32
+            )
+        else:
+            # Non-holonomic: [linear_x, angular_z]
+            self.action_space = spaces.Box(
+                low=np.array([-0.5, -0.8], dtype=np.float32),
+                high=np.array([0.8, 0.8], dtype=np.float32),
+                dtype=np.float32
+            )
         
         # Observation space: normalised fused data + goal-relative features + global position
         fused_low = np.full(self.fused_object_array_size, -1.0, dtype=np.float32)
@@ -171,7 +184,7 @@ class SocialNavEnvironment(gym.Env, Node):
         
         # Initialise
         self.get_logger().info("Social Navigation Environment initialised")
-        self.get_logger().info(f"Action space: {self.action_space}")
+        self.get_logger().info(f"Action mode: {self.action_mode} -> action space: {self.action_space}")
         self.get_logger().info(f"Observation space (low, high, shape, dtype): {self.observation_space}")
         self.get_logger().info(f"Fused object array size: {self.fused_object_array_size} (3 * {self.num_rays} rays)")
         self.get_logger().info(
@@ -250,8 +263,12 @@ class SocialNavEnvironment(gym.Env, Node):
 
         cmd = Twist()
         cmd.linear.x = float(action[0])
-        cmd.linear.y = float(action[1])
-        cmd.angular.z = float(action[2])
+        if self.action_mode == 'holonomic':
+            cmd.linear.y = float(action[1])
+            cmd.angular.z = float(action[2])
+        else:
+            cmd.linear.y = 0.0
+            cmd.angular.z = float(action[1])
 
         # Action repeat: execute same action multiple times and accumulate rewards
         total_reward = 0.0
@@ -266,6 +283,11 @@ class SocialNavEnvironment(gym.Env, Node):
             time.sleep(0.1) 
 
             step_reward, reward_components, termination_flags = self.calculate_reward_and_termination_conditions()
+
+            # Apply backward penalty to discourage reversing and encourage forward movement
+            backward_penalty = 0.1 * cmd.linear.x
+            step_reward += backward_penalty
+ 
             total_reward += step_reward
             final_termination_flags = termination_flags
 

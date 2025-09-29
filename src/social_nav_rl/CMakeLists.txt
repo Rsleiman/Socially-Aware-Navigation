@@ -13,6 +13,7 @@ find_package(geometry_msgs REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(nav_msgs REQUIRED)
 find_package(sensor_msgs REQUIRED)
+find_package(hunav_msgs REQUIRED)
 
 
 ament_python_install_package(${PROJECT_NAME})
@@ -23,6 +24,10 @@ install(PROGRAMS
   scripts/train_a2c.py
   scripts/training_monitor.py
   scripts/gazebo_monitor.py
+  scripts/evaluation_manager_node.py
+  scripts/policy_evaluation_node.py
+  scripts/results_analyzer_node.py
+  scripts/eval_cli.py
   DESTINATION lib/${PROJECT_NAME}
 )
 

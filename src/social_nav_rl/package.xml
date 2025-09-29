@@ -17,6 +17,7 @@
   <depend>nav_msgs</depend>
   <depend>sensor_msgs</depend>
   <depend>gazebo_msgs</depend>
+  <depend>hunav_msgs</depend>
   
   <depend>social_nav_planner</depend>
 
