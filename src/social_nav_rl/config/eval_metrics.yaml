@@ -1,0 +1,48 @@
+hunav_evaluator_node:
+  ros__parameters:
+
+    frequency: 2.0
+
+    result_file: 'social_nav_eval_metrics'
+
+    metrics:
+    
+      # Core task success metrics
+      time_to_reach_goal: true
+      path_length: true
+      completed: true
+      minimum_distance_to_target: true
+      final_distance_to_target: true
+      time_not_moving: true
+      
+      # Safety metrics
+      robot_on_person_collision: true
+      person_on_robot_collision: true
+      
+      # Social comfort - individual proximity
+      avg_distance_to_closest_person: true
+      minimum_distance_to_people: true
+      intimate_space_intrusions: true
+      personal_space_intrusions: true
+      social_space_intrusions: true
+      
+      # Social comfort - group interactions (key for conversational groups)
+      group_intimate_space_intrusions: true
+      group_personal_space_intrusions: true
+      group_social_space_intrusions: true
+      
+      # Motion smoothness  
+      cumulative_heading_changes: true
+      avg_robot_linear_speed: true
+      avg_robot_angular_speed: true
+      avg_acceleration: true
+      avg_overacceleration: true
+      
+      # Disabled metrics (not needed for conversational group evaluation)
+      social_force_on_agents: false
+      social_force_on_robot: false
+      social_work: false
+      obstacle_force_on_robot: false
+      obstacle_force_on_agents: false
+      avg_pedestrian_velocity: false
+      avg_closest_pedestrian_velocity: false

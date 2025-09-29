@@ -183,7 +183,7 @@ def generate_launch_description():
                     period=2.0,
                     actions=[
                         gzserver_process,
-                        # gzclient_process # Run headless for faster training
+                        gzclient_process # Run headless for faster training
                     ],
                 )
             ]

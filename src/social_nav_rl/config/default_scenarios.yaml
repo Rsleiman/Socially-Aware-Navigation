@@ -1,0 +1,95 @@
+scenarios:
+  - name: "default_experiment"
+    description: "Default open space with small group for experiments"
+    environment_name: "default"
+    robot_spawn:
+      x: 0.0
+      y: 0.0
+      z: 0.25
+      yaw: 1.0
+    goals:
+      - x: 3.0
+        y: 0.0
+      - x: -3.0
+        y: 0.0
+      - x: 0.0
+        y: 3.0
+      - x: 0.0
+        y: -3.0
+    agent_config: "agents_experimenting.yaml"
+    
+  - name: "training_env_1"  
+    description: "Training environment 1 with multiple conversational groups"
+    environment_name: "default"
+    robot_spawn:
+      x: 0.0
+      y: 0.0
+      z: 0.25
+      yaw: 0.0
+    goals:
+      - x: 4.0
+        y: 0.0
+      - x: -4.0
+        y: 0.0
+      - x: 0.0
+        y: 4.0
+      - x: 0.0
+        y: -4.0
+    agent_config: "train_env_1.yaml"
+    
+  - name: "training_env_2"
+    description: "Training environment 2 with different group configurations"  
+    environment_name: "default"
+    robot_spawn:
+      x: 0.0
+      y: 0.0
+      z: 0.25
+      yaw: 0.0
+    goals:
+      - x: 3.5
+        y: 1.0
+      - x: -3.5
+        y: -1.0
+      - x: 1.0
+        y: 3.5
+      - x: -1.0
+        y: -3.5
+    agent_config: "train_env_2.yaml"
+    
+  - name: "cafe_environment"
+    description: "Cafe environment with realistic social groups"  
+    environment_name: "cafe"
+    robot_spawn:
+      x: 0.0
+      y: 0.0
+      z: 0.25
+      yaw: 0.0
+    goals:
+      - x: 2.0
+        y: 2.0
+      - x: -2.0
+        y: -2.0
+    agent_config: "agents_cafe.yaml"
+    
+  - name: "warehouse_environment"
+    description: "Warehouse environment with obstacles and groups"  
+    environment_name: "warehouse"
+    robot_spawn:
+      x: 0.0
+      y: 0.0
+      z: 0.25
+      yaw: 0.0
+    goals:
+      - x: 5.0
+        y: 0.0
+      - x: -5.0
+        y: 0.0
+      - x: 0.0
+        y: 5.0
+    agent_config: "agents_warehouse.yaml"
+
+evaluation:
+  episode_timeout: 120  # seconds
+  goal_threshold: 0.5   # meters
+  random_spawn_jitter: 0.2  # meters
+  random_goal_jitter: 0.1   # meters
