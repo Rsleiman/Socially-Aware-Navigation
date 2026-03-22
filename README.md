@@ -83,21 +83,9 @@ The following packages are imported dependencies from external sources:
 - **PyTorch** (for RL training)
 - **Gymnasium** (OpenAI Gym successor)
 
-### Dependencies
-
-```bash
-# Install ROS 2 dependencies
-sudo apt update
-sudo apt install ros-humble-nav2-bringup \
-                 ros-humble-gazebo-ros-pkgs \
-                 ros-humble-people-msgs
-
-# Install Python dependencies
-pip install torch gymnasium numpy matplotlib pandas seaborn shapely
-```
+For full environment setup including all system, ROS2, and Python dependencies, see [`INSTALL.md`](INSTALL.md).
 
 ### Build Instructions
-
 ```bash
 # Create workspace
 mkdir -p ~/go2_social_nav_ws/src
