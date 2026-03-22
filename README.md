@@ -70,7 +70,7 @@ The following packages are imported dependencies from external sources:
 - **hunav_gazebo_wrapper** - Gazebo world and scenario management
 - **hunav_sim** - Human navigation simulation with Social Force Models
 - **lightsfm** - Lightweight Social Force Model implementation
-- **people** - ROS people message definitions
+- **people** - ROS people message definitions (bundled under `src/people/`, not available in ROS2 Humble repos)
 - **unitree-go2-ros2** - Unitree Go2 robot description and control
 
 ## Installation
@@ -79,23 +79,24 @@ The following packages are imported dependencies from external sources:
 
 - **ROS 2 Humble** (recommended)
 - **Gazebo Classic** (11.x)
-- **Python 3.8+**
+- **Python 3.10+**
 - **PyTorch** (for RL training)
 - **Gymnasium** (OpenAI Gym successor)
 
 For full environment setup including all system, ROS2, and Python dependencies, see [`INSTALL.md`](INSTALL.md).
 
 ### Build Instructions
+
 ```bash
 # Create workspace
-mkdir -p ~/go2_social_nav_ws/src
-cd ~/go2_social_nav_ws/src
+mkdir -p ~/socially_aware_nav_ws/src # Or another suitable name
+cd ~/socially_aware_nav_ws/src
 
 # Clone this repository
 git clone https://github.com/Rsleiman/Socially-Aware-Navigation.git .
 
 # Install ROS dependencies
-cd ~/go2_social_nav_ws
+cd ~/socially_aware_nav_ws
 rosdep install --from-paths src --ignore-src -r -y
 
 # Build workspace
@@ -114,7 +115,7 @@ source install/setup.bash
 Launch the complete training pipeline:
 
 ```bash
-cd ~/go2_social_nav_ws
+cd ~/socially_aware_nav_ws
 source install/setup.bash
 
 ros2 launch social_nav_rl train_a2c.launch.py \
@@ -239,7 +240,7 @@ Socially-Aware-Navigation/
 │   ├── hunav_gazebo_wrapper/        # Dependency: Gazebo integration
 │   ├── unitree-go2-ros2/            # Dependency: Go2 robot description
 │   ├── lightsfm/                    # Dependency: Social Force Model
-│   ├── people/                      # Dependency: People messages
+│   ├── people/                      # Dependency: People messages (bundled)
 │   ├── BehaviorTree.CPP/            # Dependency: Behavior trees
 │   └── BehaviorTree.ROS2/           # Dependency: BT ROS2 bindings
 │

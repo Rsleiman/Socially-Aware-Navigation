@@ -40,6 +40,16 @@ def generate_launch_description():
         default_value="holonomic",
         description="Select holonomic or nonholonomic action space for training"
     )
+
+    # New optional argument: filename of pretrained checkpoint under social_nav_rl share/models
+    declare_pretrained_filename = DeclareLaunchArgument(
+        "pretrained_filename",
+        default_value="",
+        description=(
+            "Checkpoint filename in social_nav_rl share/models to resume from. "
+            "Leave empty to start from scratch."
+        ),
+    )
     
     # Get launch configurations
     environment_name = LaunchConfiguration("environment_name")
@@ -47,6 +57,7 @@ def generate_launch_description():
     total_timesteps = LaunchConfiguration("total_timesteps")
     learning_rate = LaunchConfiguration("learning_rate")
     action_mode = LaunchConfiguration("action_mode")
+    pretrained_filename = LaunchConfiguration("pretrained_filename")
 
     # Map file for navigation components
     map_yaml_file = PathJoinSubstitution([
@@ -135,7 +146,11 @@ def generate_launch_description():
             "learning_rate": learning_rate,
             "use_sim_time": True
         }],
-        arguments=["--action-mode", action_mode, "--ros-args", "--log-level", "INFO"]
+        arguments=[
+            "--action-mode", action_mode,
+            "--pretrained-filename", pretrained_filename,
+            "--ros-args", "--log-level", "INFO"
+        ]
     )
     
     # Gazebo Monitor node. Automatically unpauses Gazebo if it gets stuck
@@ -154,7 +169,7 @@ def generate_launch_description():
     
     # Start training after simulation is ready
     training_timer = TimerAction(
-        period=20.0,  # Wait for simulation to stabilize
+        period=17.0,  # Wait for simulation to stabilize
         actions=[training_node]
     )
     
@@ -164,6 +179,7 @@ def generate_launch_description():
         declare_total_timesteps,
         declare_learning_rate,
         declare_action_mode,
+        declare_pretrained_filename,
         
         simulation_launch,
         nav2_minimal_launch,

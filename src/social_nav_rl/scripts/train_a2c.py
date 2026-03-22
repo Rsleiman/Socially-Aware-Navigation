@@ -59,6 +59,36 @@ class A2CTrainer:
             device=self.device,
         )
         
+        # If a pretrained model filename is provided, attempt to load it
+        pretrained_filename = config.get('pretrained_filename')
+        if pretrained_filename:
+            try:
+                if not pretrained_filename.endswith('.pt'):
+                    pretrained_filename += '.pt'
+
+                pkg_dir = get_package_share_directory('social_nav_rl')
+                model_dir = os.path.join(pkg_dir, 'models')
+                model_path = os.path.join(model_dir, pretrained_filename)
+
+                if not os.path.isfile(model_path):
+                    available = []
+                    if os.path.isdir(model_dir):
+                        available = sorted([f for f in os.listdir(model_dir) if f.endswith('.pt')])
+                    available_str = (', '.join(available)) if available else 'None'
+                    raise FileNotFoundError(
+                        f"Model file not found: {model_path}. Available in models/: {available_str}"
+                    )
+                
+                self.agent.load(model_path)
+                # Ensure optimiser respects the configured learning rate even after loading
+                for g in self.agent.optimiser.param_groups:
+                    g['lr'] = config.get('learning_rate', 3e-4)
+                print(f"Loaded pretrained model: {model_path}")
+            except Exception as e:
+                raise RuntimeError(f"Failed to load pretrained model '{pretrained_filename}': {e}")
+        else:
+            print("No pretrained model provided. Training will start from scratch.")
+        
         # Training tracking
         self.global_step = 0
         self.episode_count = 0
@@ -390,6 +420,13 @@ def main():
         default='holonomic',
         help="Select holonomic (linear.x, linear.y, angular.z) or nonholonomic (linear.x, angular.z) actions"
     )
+    # New optional argument to start from a pretrained model filename under share/social_nav_rl/models
+    parser.add_argument(
+        "--pretrained-filename",
+        type=str,
+        default=None,
+        help="Filename of a .pt checkpoint under social_nav_rl share/models to load before training. Leave empty for fresh training."
+    )
 
     parsed_args = parser.parse_args(remove_ros_args(argv)[1:])
 
@@ -405,6 +442,8 @@ def main():
         'eval_freq': 2500,
         'save_freq': 5000,
         'action_mode': parsed_args.action_mode,
+        # Normalise empty string to None if launch passes an empty value
+        'pretrained_filename': (parsed_args.pretrained_filename or None),
     }
     
     try:

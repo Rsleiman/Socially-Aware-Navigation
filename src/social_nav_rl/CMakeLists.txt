@@ -23,11 +23,11 @@ install(PROGRAMS
   scripts/policy_network.py
   scripts/train_a2c.py
   scripts/training_monitor.py
+  scripts/social_reward_calculator.py
   scripts/gazebo_monitor.py
   scripts/evaluation_manager_node.py
   scripts/policy_evaluation_node.py
   scripts/results_analyzer_node.py
-  scripts/eval_cli.py
   DESTINATION lib/${PROJECT_NAME}
 )
 

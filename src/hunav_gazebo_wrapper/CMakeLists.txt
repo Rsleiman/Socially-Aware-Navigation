@@ -69,9 +69,6 @@ install(DIRECTORY include/
         DESTINATION include
 )
 
-install(DIRECTORY launch/
-   DESTINATION share/${PROJECT_NAME}/launch
-)
 install(DIRECTORY worlds/
    DESTINATION share/${PROJECT_NAME}/worlds
 )

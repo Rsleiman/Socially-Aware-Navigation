@@ -13,8 +13,8 @@ from std_msgs.msg import String
 from nav_msgs.msg import Odometry
 from ament_index_python.packages import get_package_share_directory
 
-from policy_network import A2CAgent
-from env_social_nav import SocialNavEnvironment
+from social_nav_rl.scripts.policy_network import A2CAgent
+from social_nav_rl.scripts.env_social_nav import SocialNavEnvironment
 
 
 class PolicyEvaluationNode(Node):
